@@ -1,2 +1,12 @@
 .build/
 .swiftpm/
+
+# macOS metadata
+.DS_Store
+
+# Xcode user-specific state
+xcuserdata/
+*.xcuserstate
+
+# Local Xcode build products
+DerivedData/

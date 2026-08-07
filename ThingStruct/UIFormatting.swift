@@ -8,10 +8,15 @@ import SwiftUI
 // 这样可以避免 domain model 被 UI 文案细节污染。
 extension Int {
     var formattedTime: String {
-        // 这里把“分钟数”格式化成 `HH:mm`。
-        let hour = self / 60
-        let minute = self % 60
-        return String(format: "%02d:%02d", hour, minute)
+        let start = Calendar.current.startOfDay(for: .now)
+        guard let date = Calendar.current.date(byAdding: .minute, value: self, to: start) else {
+            return ""
+        }
+        let formatter = DateFormatter()
+        formatter.locale = .current
+        formatter.timeStyle = .short
+        formatter.dateStyle = .none
+        return formatter.string(from: date)
     }
 
     var timelineLayerBadgeTitle: String {
@@ -48,15 +53,14 @@ extension LocalDay {
     }
 
     var nowNavigationTitle: String {
-        // `Now` 页顶部标题故意固定成英文缩写风格，避免受当前系统语言格式影响太大。
         let components = DateComponents(year: year, month: month, day: day)
         guard let date = Calendar.current.date(from: components) else {
             return description
         }
 
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "EEE MMM d"
+        formatter.locale = .current
+        formatter.setLocalizedDateFormatFromTemplate("EEE MMM d")
         return formatter.string(from: date)
     }
 }

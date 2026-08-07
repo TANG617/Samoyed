@@ -95,11 +95,11 @@ final class TemplateEngineTests: XCTestCase {
         XCTAssertEqual(selected?.id, pickedTemplate.id)
     }
 
-    func testRequiresExplicitTemplateSelectionOnlyForTodayWithoutPlanOrChoice() throws {
+    func testExplicitTemplateSelectionGateIsDisabledForAutomaticDefaults() throws {
         let today = LocalDay(year: 2026, month: 3, day: 20)
         let future = today.adding(days: 1)
 
-        XCTAssertTrue(
+        XCTAssertFalse(
             try TemplateEngine.requiresExplicitTemplateSelection(
                 for: today,
                 today: today,

@@ -52,6 +52,14 @@ public struct ThingStructDocument: Equatable, Codable, Sendable {
 }
 
 public extension ThingStructDocument {
+    var isEmptyForActivation: Bool {
+        dayPlans.isEmpty &&
+        savedTemplates.isEmpty &&
+        weekdayRules.isEmpty &&
+        overrides.isEmpty &&
+        daySelections.isEmpty
+    }
+
     // 这里故意使用线性查找，而不是额外维护索引表。
     // 原因是当前文档规模还小，保持序列化结构简单、直白，比提前做复杂优化更重要。
     func dayPlan(for date: LocalDay) -> DayPlan? {
@@ -73,8 +81,8 @@ public extension ThingStructDocument {
     }
 }
 
-// `SampleDataFactory` 只服务于首次启动体验和 SwiftUI 预览。
-// 在用户还没有创建真实数据之前，它负责准备一份“看起来像真实使用场景”的样本文档。
+// `SampleDataFactory` 只服务于 SwiftUI Preview 和自动化测试。
+// 生产启动路径不会调用它，也不会用样本覆盖缺失或损坏的用户文档。
 public enum SampleDataFactory {
     public static func seededDocument(
         referenceDay: LocalDay = .today(),

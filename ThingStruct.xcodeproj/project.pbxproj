@@ -11,6 +11,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		U10000012F00000000A74A6B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 276619522EF2562D00A74A6B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 276619592EF2562D00A74A6B;
+			remoteInfo = ThingStruct;
+		};
 		B100000A2EF3000000A74A6B /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 276619522EF2562D00A74A6B /* Project object */;
@@ -39,6 +46,7 @@
 		2766195A2EF2562D00A74A6B /* ThingStruct.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ThingStruct.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9A4D4F3A1B2C3D4E5F607182 /* Design.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = Design.md; sourceTree = "<group>"; };
 		B10000022EF3000000A74A6B /* ThingStructWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ThingStructWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		U10000022F00000000A74A6B /* ThingStructUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ThingStructUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -85,6 +93,11 @@
 			path = ThingStructWidgetExtension;
 			sourceTree = "<group>";
 		};
+		U10000032F00000000A74A6B /* ThingStructUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = ThingStructUITests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -96,6 +109,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		B10000062EF3000000A74A6B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		U10000042F00000000A74A6B /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -114,6 +134,7 @@
 				B10000042EF3000000A74A6B /* ThingStruct/CoreShared */,
 				B10000052EF3000000A74A6B /* ThingStructWidgetExtension */,
 				9A4D4F3A1B2C3D4E5F607181 /* Tests */,
+				U10000032F00000000A74A6B /* ThingStructUITests */,
 				2766195B2EF2562D00A74A6B /* Products */,
 			);
 			sourceTree = "<group>";
@@ -123,6 +144,7 @@
 			children = (
 				2766195A2EF2562D00A74A6B /* ThingStruct.app */,
 				B10000022EF3000000A74A6B /* ThingStructWidgetExtension.appex */,
+				U10000022F00000000A74A6B /* ThingStructUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -177,6 +199,29 @@
 			productReference = B10000022EF3000000A74A6B /* ThingStructWidgetExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		U10000052F00000000A74A6B /* ThingStructUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = U100000B2F00000000A74A6B /* Build configuration list for PBXNativeTarget "ThingStructUITests" */;
+			buildPhases = (
+				U10000062F00000000A74A6B /* Sources */,
+				U10000042F00000000A74A6B /* Frameworks */,
+				U10000072F00000000A74A6B /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				U10000092F00000000A74A6B /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				U10000032F00000000A74A6B /* ThingStructUITests */,
+			);
+			name = ThingStructUITests;
+			packageProductDependencies = (
+			);
+			productName = ThingStructUITests;
+			productReference = U10000022F00000000A74A6B /* ThingStructUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -192,6 +237,10 @@
 					};
 					B100000B2EF3000000A74A6B = {
 						CreatedOnToolsVersion = 26.1.1;
+					};
+					U10000052F00000000A74A6B = {
+						CreatedOnToolsVersion = 26.1.1;
+						TestTargetID = 276619592EF2562D00A74A6B;
 					};
 				};
 			};
@@ -211,6 +260,7 @@
 			targets = (
 				276619592EF2562D00A74A6B /* ThingStruct */,
 				B100000B2EF3000000A74A6B /* ThingStructWidgetExtension */,
+				U10000052F00000000A74A6B /* ThingStructUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -224,6 +274,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		B10000092EF3000000A74A6B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		U10000072F00000000A74A6B /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -247,6 +304,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		U10000062F00000000A74A6B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -254,6 +318,11 @@
 			isa = PBXTargetDependency;
 			target = B100000B2EF3000000A74A6B /* ThingStructWidgetExtension */;
 			targetProxy = B100000A2EF3000000A74A6B /* PBXContainerItemProxy */;
+		};
+		U10000092F00000000A74A6B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 276619592EF2562D00A74A6B /* ThingStruct */;
+			targetProxy = U10000012F00000000A74A6B /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -284,7 +353,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = tang.ThingStruct;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -306,7 +375,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = ThingStruct;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
-				CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION = YES;
+				CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION = NO;
 				CODE_SIGN_ENTITLEMENTS = ThingStruct/ThingStruct.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -326,9 +395,10 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = tang.ThingStruct;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "$(THINGSTRUCT_APP_PROVISIONING_PROFILE)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -377,7 +447,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = 949JBN743D;
+				DEVELOPMENT_TEAM = PRTA2MGMQH;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -442,7 +512,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = 949JBN743D;
+				DEVELOPMENT_TEAM = PRTA2MGMQH;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -482,7 +552,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = tang.ThingStruct.WidgetExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -503,7 +573,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
-				CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION = YES;
+				CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION = NO;
 				CODE_SIGN_ENTITLEMENTS = ThingStructWidgetExtension/ThingStructWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -516,9 +586,10 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = tang.ThingStruct.WidgetExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "$(THINGSTRUCT_WIDGET_PROVISIONING_PROFILE)";
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -530,6 +601,42 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		U100000A2F00000000A74A6B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = PRTA2MGMQH;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 0.3;
+				PRODUCT_BUNDLE_IDENTIFIER = tang.ThingStructUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = ThingStruct;
+			};
+			name = Debug;
+		};
+		U100000C2F00000000A74A6B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = PRTA2MGMQH;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 0.3;
+				PRODUCT_BUNDLE_IDENTIFIER = tang.ThingStructUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = ThingStruct;
 			};
 			name = Release;
 		};
@@ -559,6 +666,15 @@
 			buildConfigurations = (
 				B100000E2EF3000000A74A6B /* Debug */,
 				B100000F2EF3000000A74A6B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		U100000B2F00000000A74A6B /* Build configuration list for PBXNativeTarget "ThingStructUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				U100000A2F00000000A74A6B /* Debug */,
+				U100000C2F00000000A74A6B /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

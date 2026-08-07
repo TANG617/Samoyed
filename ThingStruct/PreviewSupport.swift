@@ -49,6 +49,7 @@ enum PreviewSupport {
         if loaded {
             store.document = document ?? seededDocument(on: day)
             store.isLoaded = true
+            store.bootstrapState = .ready
             store.ensureMaterialized(for: day)
             store.selectedBlockID = selectedBlockID
         }

@@ -6,303 +6,255 @@ enum LibraryDestination: Hashable {
     case settings
 }
 
+private enum LibrarySheetDestination: Identifiable {
+    case simple(SimpleDayTypeDraft)
+    case advanced(UUID)
+    case validationExport(URL)
+
+    var id: String {
+        switch self {
+        case let .simple(draft): "simple-\(draft.templateID?.uuidString ?? "new")"
+        case let .advanced(id): "advanced-\(id.uuidString)"
+        case let .validationExport(url): "export-\(url.path())"
+        }
+    }
+}
+
 struct LibraryRootView: View {
     @Environment(ThingStructStore.self) private var store
+    @State private var sheet: LibrarySheetDestination?
+    @State private var templateToDelete: SavedDayTemplate?
+    @State private var showingClearValidationConfirmation = false
 
     var body: some View {
-        @Bindable var store = store
-
-        NavigationStack(path: $store.libraryNavigationPath) {
+        NavigationStack {
             List {
-                Section {
-                    LibraryStatusSummaryRow(
-                        todayStatus: store.isLoaded
-                            ? (store.requiresTemplateSelection(for: .today()) ? "Choose today" : "Ready")
-                            : "Loading",
-                        templateCount: store.savedTemplates.count,
-                        tintTitle: store.tintPreset.title
-                    )
-                    .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
-                    .listRowBackground(Color.clear)
-                }
-
-                Section("Workspace") {
-                    NavigationLink(value: LibraryDestination.templates) {
-                        LibraryEntryRow(
-                            title: "Templates",
-                            systemImage: "square.stack.3d.up",
-                            subtitle: "Choose today and manage reusable day structures.",
-                            status: store.savedTemplates.isEmpty ? "Empty" : "\(store.savedTemplates.count)"
+                Section("Day Types") {
+                    if store.savedTemplates.isEmpty {
+                        ContentUnavailableView(
+                            "No Day Types",
+                            systemImage: "square.stack.3d.up.slash",
+                            description: Text("Create one reusable shape for a kind of day.")
                         )
+                        Button {
+                            sheet = .simple(.newDayType)
+                        } label: {
+                            Label("Create Day Type", systemImage: "plus")
+                        }
+                    } else {
+                        ForEach(sortedTemplates) { template in
+                            Button {
+                                edit(template)
+                            } label: {
+                                DayTypeRow(
+                                    template: template,
+                                    weekdays: store.assignedWeekdays(for: template.id)
+                                )
+                            }
+                            .buttonStyle(.plain)
+                            .swipeActions(edge: .trailing) {
+                                Button("Delete", role: .destructive) {
+                                    templateToDelete = template
+                                }
+                            }
+                        }
                     }
                 }
 
-                Section("Appearance") {
-                    NavigationLink(value: LibraryDestination.settings) {
-                        LibraryEntryRow(
-                            title: "Settings",
-                            systemImage: "paintpalette",
-                            subtitle: "Tune tint and global visual behavior.",
-                            status: store.tintPreset.title
-                        )
-                    }
-                }
-
-                Section("Data") {
-                    NavigationLink(value: LibraryDestination.importExport) {
-                        LibraryEntryRow(
-                            title: "Import & Export",
-                            systemImage: "arrow.up.arrow.down.doc",
-                            subtitle: "Move day plans in and out through YAML.",
-                            status: "YAML"
-                        )
+                Section("Usual Week") {
+                    ForEach(Weekday.mondayFirst) { weekday in
+                        Picker(
+                            weekday.fullName,
+                            selection: Binding(
+                                get: { store.assignedTemplateID(for: weekday) },
+                                set: { store.assignWeekday(weekday, to: $0) }
+                            )
+                        ) {
+                            Text("None").tag(UUID?.none)
+                            ForEach(sortedTemplates) { template in
+                                Text(template.title).tag(Optional(template.id))
+                            }
+                        }
+                        .pickerStyle(.menu)
                     }
                 }
             }
             .listStyle(.insetGrouped)
             .navigationTitle("Library")
-            .navigationBarTitleDisplayMode(.large)
-            .navigationDestination(for: LibraryDestination.self) { destination in
-                switch destination {
-                case .templates:
-                    TemplatesRootView()
-
-                case .importExport:
-                    LibraryImportExportView()
-
-                case .settings:
-                    LibrarySettingsView()
-                }
-            }
-        }
-    }
-}
-
-private struct LibraryStatusSummaryRow: View {
-    let todayStatus: String
-    let templateCount: Int
-    let tintTitle: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Workspace Status")
-                .font(.headline)
-
-            HStack(spacing: 10) {
-                summaryPill(
-                    title: "Today",
-                    value: todayStatus,
-                    systemImage: "calendar"
-                )
-                summaryPill(
-                    title: "Templates",
-                    value: templateCount == 0 ? "None" : "\(templateCount)",
-                    systemImage: "square.stack.3d.up"
-                )
-                summaryPill(
-                    title: "Tint",
-                    value: tintTitle,
-                    systemImage: "paintpalette"
-                )
-            }
-        }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(Color(uiColor: .separator).opacity(0.12), lineWidth: 1)
-        )
-        .padding(.horizontal, 4)
-    }
-
-    private func summaryPill(title: String, value: String, systemImage: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Label(title, systemImage: systemImage)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-
-            Text(value)
-                .font(.subheadline.weight(.semibold))
-                .lineLimit(1)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(uiColor: .tertiarySystemFill), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-    }
-}
-
-private struct LibrarySettingsView: View {
-    @Environment(ThingStructStore.self) private var store
-
-    var body: some View {
-        List {
-            Section("Tint Presets") {
-                ForEach(AppTintPreset.allCases) { preset in
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
                     Button {
-                        store.applyTintPreset(preset)
+                        sheet = .simple(.newDayType)
                     } label: {
-                        TintPresetRow(
-                            preset: preset,
-                            isSelected: store.tintPreset == preset
-                        )
+                        Label("New Day Type", systemImage: "plus")
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityAddTraits(store.tintPreset == preset ? [.isSelected] : [])
+                }
+
+                if ValidationRuntime.isEnabled {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Menu {
+                            Button("Export Validation Log", systemImage: "square.and.arrow.up") {
+                                Task {
+                                    if let url = await store.validationExportURL() {
+                                        sheet = .validationExport(url)
+                                    } else {
+                                        store.presentErrorMessage("No validation events have been recorded yet.")
+                                    }
+                                }
+                            }
+                            Button("Clear Validation Log", systemImage: "trash", role: .destructive) {
+                                showingClearValidationConfirmation = true
+                            }
+                        } label: {
+                            Label("Validation", systemImage: "ellipsis.circle")
+                        }
+                    }
                 }
             }
-
-            Section("Behavior") {
-                Text("The selected tint updates the global accent and regenerates the layered block palette so Now, Today, Library, widgets, and live activities keep the same depth curve.")
-
-                Text("Blank blocks stay neutral, while active layers reuse the same saturation and brightness steps across every preset.")
-                    .foregroundStyle(.secondary)
-            }
-            .font(.footnote)
         }
-        .navigationTitle("Settings")
-        .navigationBarTitleDisplayMode(.inline)
+        .sheet(item: $sheet) { destination in
+            switch destination {
+            case let .simple(draft):
+                SimpleDayTypeEditorSheet(draft: draft)
+                    .environment(store)
+
+            case let .advanced(templateID):
+                if let template = store.savedTemplate(id: templateID) {
+                    TemplateEditorSheet(
+                        template: template,
+                        assignedWeekdays: store.assignedWeekdays(for: templateID),
+                        occupiedWeekdays: store.occupiedWeekdays(excluding: templateID),
+                        onSave: { title, blocks, weekdays in
+                            try store.saveEditedTemplate(
+                                templateID,
+                                title: title,
+                                blocks: blocks,
+                                assignedWeekdays: weekdays
+                            )
+                        },
+                        onDelete: { store.deleteSavedTemplate(templateID) }
+                    )
+                }
+
+            case let .validationExport(url):
+                NavigationStack {
+                    VStack(spacing: 18) {
+                        Image(systemName: "doc.text")
+                            .font(.largeTitle)
+                            .foregroundStyle(.tint)
+                        Text("Validation Log")
+                            .font(.title2.bold())
+                        Text("This JSONL file contains anonymous product events only.")
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                        ShareLink(item: url) {
+                            Label("Share Log", systemImage: "square.and.arrow.up")
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                    .padding(24)
+                    .navigationTitle("Export")
+                    .navigationBarTitleDisplayMode(.inline)
+                }
+                .presentationDetents([.medium])
+            }
+        }
+        .confirmationDialog(
+            "Delete this day type?",
+            isPresented: Binding(
+                get: { templateToDelete != nil },
+                set: { if !$0 { templateToDelete = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Delete Day Type", role: .destructive) {
+                if let templateToDelete {
+                    store.deleteSavedTemplate(templateToDelete.id)
+                    store.recordValidationEvent(
+                        .dayTypeEditCompleted,
+                        outcome: "deleted",
+                        variant: templateToDelete.isSimpleDayType ? "simple" : "advanced"
+                    )
+                }
+                templateToDelete = nil
+            }
+            Button("Cancel", role: .cancel) { templateToDelete = nil }
+        } message: {
+            Text("Existing days remain unchanged. Usual-week assignments for this day type will be removed.")
+        }
+        .confirmationDialog(
+            "Clear the validation log?",
+            isPresented: $showingClearValidationConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Clear Log", role: .destructive) {
+                Task { await store.clearValidationLog() }
+            }
+            Button("Cancel", role: .cancel) {}
+        }
+    }
+
+    private var sortedTemplates: [SavedDayTemplate] {
+        store.savedTemplates.sorted {
+            $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
+        }
+    }
+
+    private func edit(_ template: SavedDayTemplate) {
+        if let draft = SimpleDayTypeDraft(
+            template: template,
+            assignedWeekdays: store.assignedWeekdays(for: template.id)
+        ) {
+            sheet = .simple(draft)
+        } else {
+            sheet = .advanced(template.id)
+        }
     }
 }
 
-private struct TintPresetRow: View {
-    let preset: AppTintPreset
-    let isSelected: Bool
+private struct DayTypeRow: View {
+    let template: SavedDayTemplate
+    let weekdays: Set<Weekday>
 
     var body: some View {
         HStack(spacing: 14) {
-            TintPresetSwatch(preset: preset)
-
+            Image(systemName: template.isSimpleDayType ? "square.stack.3d.up" : "square.3.layers.3d")
+                .font(.title3)
+                .foregroundStyle(.tint)
+                .frame(width: 28)
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 8) {
-                    Text(preset.title)
+                    Text(template.title)
                         .font(.body.weight(.semibold))
-
-                    if preset == .ocean {
-                        Text("Default")
+                        .foregroundStyle(.primary)
+                    if !template.isSimpleDayType {
+                        Text("Advanced")
                             .font(.caption2.weight(.semibold))
                             .foregroundStyle(.secondary)
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 4)
-                            .background(Color(uiColor: .tertiarySystemFill), in: Capsule())
                     }
                 }
-
-                Text(preset.subtitle)
+                Text(summary)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
             }
-
-            Spacer(minLength: 12)
-
-            if isSelected {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.title3)
-                    .foregroundStyle(.tint)
-            }
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.tertiary)
         }
-        .padding(.vertical, 4)
+        .frame(minHeight: 52)
         .contentShape(Rectangle())
     }
-}
 
-private struct TintPresetSwatch: View {
-    let preset: AppTintPreset
-
-    var body: some View {
-        ZStack(alignment: .bottomTrailing) {
-            ZStack(alignment: .leading) {
-                ForEach(Array((0 ..< 4).reversed()), id: \.self) { layer in
-                    let style = LayerVisualStyle.forBlock(
-                        layerIndex: layer,
-                        isBlank: false,
-                        preset: preset
-                    )
-
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(style.strongSurface)
-                        .frame(width: 34, height: 24)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .stroke(style.border, lineWidth: 1)
-                        )
-                        .offset(x: CGFloat(layer) * 8)
-                }
-            }
-            .frame(width: 58, height: 28, alignment: .leading)
-
-            Circle()
-                .fill(preset.tintColor)
-                .frame(width: 16, height: 16)
-                .overlay(
-                    Circle()
-                        .stroke(Color(uiColor: .systemBackground), lineWidth: 2)
-                )
-        }
-        .frame(width: 64, height: 36)
-        .accessibilityHidden(true)
+    private var summary: String {
+        let orderedDays = Weekday.mondayFirst.filter(weekdays.contains).map(\.shortName)
+        let schedule = orderedDays.isEmpty ? "No usual days" : orderedDays.joined(separator: ", ")
+        let blockCount = template.blocks.filter { $0.layerIndex == 0 }.count
+        return "\(blockCount) \(blockCount == 1 ? "block" : "blocks") · \(schedule)"
     }
 }
 
-private struct LibraryEntryRow: View {
-    let title: String
-    let systemImage: String
-    let subtitle: String
-    var status: String?
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: systemImage)
-                .font(.body.weight(.semibold))
-                .foregroundStyle(.tint)
-                .frame(width: 24, height: 24)
-
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(title)
-                        .font(.body.weight(.semibold))
-
-                    if let status {
-                        Text(status)
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                Text(subtitle)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .padding(.vertical, 2)
-        }
-    }
-}
-
-#Preview("Library Root") {
+#Preview("Library") {
     LibraryRootView()
         .environment(PreviewSupport.store(tab: .library))
-}
-
-#Preview("Library Root - Settings") {
-    LibraryRootView()
-        .environment(
-            PreviewSupport.store(
-                tab: .library,
-                libraryNavigationPath: [.settings],
-                tintPreset: .meadow
-            )
-        )
-}
-
-#Preview("Library Root - Templates") {
-    LibraryRootView()
-        .environment(
-            PreviewSupport.store(
-                tab: .library,
-                libraryNavigationPath: [.templates]
-            )
-        )
 }

@@ -86,7 +86,7 @@ final class WidgetSupportTests: XCTestCase {
         XCTAssertEqual(snapshot.tasks.map { $0.layerIndex }, [1, 1, 0])
     }
 
-    func testRepositoryWidgetSnapshotRequestsChooserWhenTodayHasNoSelection() throws {
+    func testRepositoryWidgetSnapshotUsesNoRoutineStateWhenTodayHasNoSelection() throws {
         let day = LocalDay(year: 2026, month: 3, day: 22)
         let fileURL = FileManager.default.temporaryDirectory
             .appending(path: "ThingStructTests")
@@ -100,9 +100,9 @@ final class WidgetSupportTests: XCTestCase {
             maxTaskCount: 3
         )
 
-        XCTAssertTrue(snapshot.requiresTemplateSelection)
+        XCTAssertFalse(snapshot.requiresTemplateSelection)
         XCTAssertTrue(snapshot.blocks.isEmpty)
         XCTAssertTrue(snapshot.tasks.isEmpty)
-        XCTAssertEqual(snapshot.statusMessage, "Choose today’s template")
+        XCTAssertEqual(snapshot.statusMessage, "No routine today")
     }
 }

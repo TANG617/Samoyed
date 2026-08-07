@@ -17,6 +17,19 @@ enum DayTemplateChoiceCommandResult: Equatable {
     case requiresConfirmation
 }
 
+enum AppBootstrapState: Equatable {
+    case loading
+    case needsActivation
+    case ready
+    case loadError(String)
+}
+
+struct TaskCompletionReference: Equatable {
+    let date: LocalDay
+    let blockID: UUID
+    let taskID: UUID
+}
+
 // `ThingStructStore` 是整个 app 的 UI 状态中枢。
 //
 // 如果你来自 C++，可以把它理解成下面三者的混合体：
@@ -56,6 +69,7 @@ final class ThingStructStore {
     var selectedDate: LocalDay = LocalDay.today()
     var selectedBlockID: UUID?
     var isLoaded = false
+    var bootstrapState: AppBootstrapState = .loading
     private(set) var lastErrorMessage: String?
 
     // Store 本身不直接读写 JSON 文件，而是依赖一个 concrete repository。
@@ -63,11 +77,17 @@ final class ThingStructStore {
     // 1. UI 层不碰文件系统细节
     // 2. 预览/测试可以替换 repository 的落点
     private let documentRepository: ThingStructDocumentRepository
+    private let validationLogger: ValidationEventLogger
+    private var nowVisibleDays: Set<LocalDay> = []
 
-    init(documentRepository: ThingStructDocumentRepository = .appLive) {
+    init(
+        documentRepository: ThingStructDocumentRepository = .appLive,
+        validationLogger: ValidationEventLogger = .shared
+    ) {
         // tint 偏好是 UI 级偏好，不属于 document。
         tintPreset = ThingStructTintPreference.load()
         self.documentRepository = documentRepository
+        self.validationLogger = validationLogger
     }
 
     // MARK: Bootstrap
@@ -79,27 +99,38 @@ final class ThingStructStore {
     }
 
     func bootstrapDocument() {
+        if bootstrapState != .ready {
+            bootstrapState = .loading
+        }
         do {
-            // 启动时优先从磁盘读取；如果是首次启动，就创建 sample data。
+            // A missing document is a real first-run state, not an invitation to seed production data.
             if let loaded = try documentRepository.load() {
                 document = loaded
             } else {
-                document = try SampleDataFactory.seededDocument(referenceDay: .today())
-                try documentRepository.save(document)
+                document = ThingStructDocument()
             }
 
             isLoaded = true
             dismissError()
-            // 加载完后立即保证当前选中日期已有实体化 day plan。
-            ensureMaterialized(for: selectedDate)
-            syncNotifications()
+            if document.isEmptyForActivation {
+                bootstrapState = .needsActivation
+            } else {
+                bootstrapState = .ready
+                ensureMaterialized(for: selectedDate)
+            }
         } catch {
             isLoaded = true
-            presentError(error)
+            bootstrapState = .loadError(error.localizedDescription)
         }
     }
 
     func reload() {
+        bootstrapDocument()
+    }
+
+    func retryBootstrap() {
+        bootstrapState = .loading
+        isLoaded = false
         bootstrapDocument()
     }
 
@@ -110,9 +141,7 @@ final class ThingStructStore {
     // 如果当天还没有 plan，但模板规则能推导出一个，就在这里生成。
     func ensureMaterialized(for date: LocalDay) {
         do {
-            guard shouldAutoMaterialize(for: date) else {
-                return
-            }
+            guard bootstrapState == .ready else { return }
 
             let materialized = try TemplateEngine.ensureMaterializedDayPlan(
                 for: date,
@@ -176,19 +205,16 @@ final class ThingStructStore {
     }
 
     func showTemplates() {
-        openLibrary(destination: .templates)
+        openLibrary()
     }
 
     func requiresTemplateSelection(
         for date: LocalDay,
         today: LocalDay = .today()
     ) -> Bool {
-        (try? TemplateEngine.requiresExplicitTemplateSelection(
-            for: date,
-            today: today,
-            existingDayPlans: document.dayPlans,
-            daySelections: document.daySelections
-        )) ?? false
+        _ = date
+        _ = today
+        return false
     }
 
     func todayTemplateChooserModel(for date: LocalDay? = nil) throws -> DayTemplateChooserModel {
@@ -326,6 +352,10 @@ final class ThingStructStore {
         overrideTemplateID(for: LocalDay.today().adding(days: 1))
     }
 
+    var isReady: Bool {
+        bootstrapState == .ready
+    }
+
     func persistedBlock(on date: LocalDay, blockID: UUID) -> TimeBlock? {
         // “persistedBlock” 和 `BlockDetailModel` 的区别：
         // - 前者是 document 里真实存储的业务对象
@@ -359,6 +389,144 @@ final class ThingStructStore {
     }
 
     // MARK: Commands
+
+    func activate(
+        with draft: SimpleDayTypeDraft,
+        today: LocalDay = .today(),
+        startedAt: Date = .now
+    ) throws {
+        do {
+            let template = try draft.makeNewTemplate(createdAt: startedAt)
+            let activated = try TemplateEngine.activate(
+                document: document,
+                template: template,
+                assignedWeekdays: draft.assignedWeekdays,
+                today: today,
+                activatedAt: startedAt
+            )
+            // Save the candidate before publishing it so the UI never observes a partial activation.
+            try documentRepository.save(activated)
+            document = activated
+            selectedDate = today
+            selectedTab = .now
+            selectedBlockID = nil
+            bootstrapState = .ready
+            isLoaded = true
+            documentDidChange()
+            recordValidationEvent(
+                .activationCompleted,
+                outcome: "saved",
+                variant: "workday-starter",
+                durationMilliseconds: Int(Date.now.timeIntervalSince(startedAt) * 1_000)
+            )
+        } catch {
+            recordValidationEvent(
+                .activationFailed,
+                outcome: "failed",
+                variant: "workday-starter",
+                durationMilliseconds: Int(Date.now.timeIntervalSince(startedAt) * 1_000)
+            )
+            throw error
+        }
+    }
+
+    func saveSimpleDayType(_ draft: SimpleDayTypeDraft) throws {
+        if let templateID = draft.templateID {
+            try saveEditedTemplate(
+                templateID,
+                title: draft.title,
+                blocks: draft.blocks.map(\.blockTemplate),
+                assignedWeekdays: draft.assignedWeekdays
+            )
+        } else {
+            let template = try draft.makeNewTemplate()
+            var candidate = document
+            candidate.savedTemplates.append(template)
+            candidate.weekdayRules.removeAll { draft.assignedWeekdays.contains($0.weekday) }
+            candidate.weekdayRules.append(contentsOf: draft.assignedWeekdays
+                .sorted { $0.rawValue < $1.rawValue }
+                .map { WeekdayTemplateRule(weekday: $0, savedTemplateID: template.id) })
+            candidate.weekdayRules.sort { $0.weekday.rawValue < $1.weekday.rawValue }
+            try documentRepository.save(candidate)
+            document = candidate
+            documentDidChange()
+        }
+    }
+
+    func applyTodayCorrection(_ correction: TodayBlockCorrection, on date: LocalDay) throws {
+        let corrected = try DayPlanEngine.correctBlock(correction, in: materializedDayPlan(on: date))
+        try commit(dayPlan: corrected)
+    }
+
+    func completeTask(
+        on date: LocalDay,
+        blockID: UUID,
+        taskID: UUID,
+        completedAt: Date = .now
+    ) throws -> TaskCompletionReference? {
+        var plan = try materializedDayPlan(on: date)
+        guard let blockIndex = plan.blocks.firstIndex(where: { $0.id == blockID }) else {
+            throw ThingStructCoreError.missingBlock(blockID)
+        }
+        guard let taskIndex = plan.blocks[blockIndex].tasks.firstIndex(where: { $0.id == taskID }) else {
+            return nil
+        }
+        guard !plan.blocks[blockIndex].tasks[taskIndex].isCompleted else {
+            return nil
+        }
+        plan.blocks[blockIndex].tasks[taskIndex].isCompleted = true
+        plan.blocks[blockIndex].tasks[taskIndex].completedAt = completedAt
+        plan.hasUserEdits = true
+        try commit(dayPlan: plan)
+        recordValidationEvent(.checklistCompleted, outcome: "completed", variant: "now")
+        return TaskCompletionReference(date: date, blockID: blockID, taskID: taskID)
+    }
+
+    func undoTaskCompletions(_ references: [TaskCompletionReference]) throws {
+        guard let date = references.first?.date else { return }
+        var plan = try materializedDayPlan(on: date)
+        for reference in references where reference.date == date {
+            guard let blockIndex = plan.blocks.firstIndex(where: { $0.id == reference.blockID }) else { continue }
+            guard let taskIndex = plan.blocks[blockIndex].tasks.firstIndex(where: { $0.id == reference.taskID }) else { continue }
+            plan.blocks[blockIndex].tasks[taskIndex].isCompleted = false
+            plan.blocks[blockIndex].tasks[taskIndex].completedAt = nil
+        }
+        plan.hasUserEdits = true
+        try commit(dayPlan: plan)
+        recordValidationEvent(.checklistUndone, outcome: "restored", variant: "batch")
+    }
+
+    func recordNowVisible(at date: Date = .now) {
+        let day = LocalDay(date: date)
+        guard nowVisibleDays.insert(day).inserted else { return }
+        recordValidationEvent(.nowVisible, outcome: "visible", at: date)
+    }
+
+    func recordValidationEvent(
+        _ name: ValidationEventName,
+        outcome: String? = nil,
+        variant: String? = nil,
+        durationMilliseconds: Int? = nil,
+        at date: Date = .now
+    ) {
+        Task {
+            await validationLogger.record(
+                name,
+                outcome: outcome,
+                variant: variant,
+                durationMilliseconds: durationMilliseconds,
+                at: date
+            )
+        }
+    }
+
+    func validationExportURL() async -> URL? {
+        await validationLogger.exportURL()
+    }
+
+    func clearValidationLog() async {
+        await validationLogger.clear()
+    }
 
     func toggleTask(on date: LocalDay, blockID: UUID, taskID: UUID) {
         // 这种“读 plan -> 改一处 -> 提交”的写法，是 store 里最常见的命令模式。
@@ -726,27 +894,15 @@ final class ThingStructStore {
         documentDidChange()
     }
 
-    private func shouldAutoMaterialize(for date: LocalDay) -> Bool {
-        !requiresTemplateSelection(for: date)
-    }
-
     // MARK: Persistence & System Sync
 
     private func documentDidChange() {
-        // 为什么拆成一个单独钩子？
-        // 因为以后只要是“写文档成功”，都应该触发同一套副作用。
+        // The P0 app keeps the dormant widget projection fresh, but it does not
+        // automatically start activities or schedule notifications.
         refreshVisualSystemSurfaces()
-        syncNotifications()
     }
 
     private func refreshVisualSystemSurfaces() {
-        // Widget / Live Activity 都是 document 的外部投影，需要和主 app 保持一致。
         WidgetCenter.shared.reloadTimelines(ofKind: ThingStructSharedConfig.widgetKind)
-        syncCurrentBlockLiveActivity()
-    }
-
-    private func syncNotifications() {
-        // 通知计划和当前 document 强相关，所以每次文档变动都重新对齐。
-        ThingStructNotificationCoordinator.shared.sync(with: document)
     }
 }

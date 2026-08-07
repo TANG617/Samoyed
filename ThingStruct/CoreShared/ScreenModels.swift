@@ -45,6 +45,32 @@ public struct NowTaskSection: Identifiable, Equatable, Sendable {
     public var isComplete: Bool
 }
 
+public enum NowFocusState: String, Equatable, Sendable {
+    case noRoutine
+    case beforeFirstBlock
+    case openTime
+    case active
+    case finished
+}
+
+public struct NowFocusBlock: Identifiable, Equatable, Sendable {
+    public var id: UUID
+    public var title: String
+    public var note: String?
+    public var startMinuteOfDay: Int
+    public var endMinuteOfDay: Int
+    public var taskSourceBlockID: UUID?
+    public var taskSourceTitle: String?
+    public var visibleTasks: [TaskItem]
+    public var remainingTaskCount: Int
+}
+
+public struct NowUpcomingBlock: Identifiable, Equatable, Sendable {
+    public var id: UUID
+    public var title: String
+    public var transitionMinuteOfDay: Int
+}
+
 public struct NowScreenModel: Equatable, Sendable {
     public var date: LocalDay
     public var minuteOfDay: Int
@@ -54,6 +80,9 @@ public struct NowScreenModel: Equatable, Sendable {
     public var statusMessage: String?
     public var taskSourceTitle: String?
     public var taskSections: [NowTaskSection]
+    public var focusState: NowFocusState = .noRoutine
+    public var focusBlock: NowFocusBlock?
+    public var upcomingBlock: NowUpcomingBlock?
 }
 
 // `Today` 页面会同时展示：
@@ -194,7 +223,7 @@ public enum ThingStructPresentation {
     ) throws -> NowScreenModel {
         // `Now` 页面本质上是在问：
         // “某一天的某一分钟，当前激活链(active chain)是什么？”
-        let plan = document.dayPlan(for: date) ?? DayPlan(date: date)
+        let plan = try DayPlanEngine.resolved(document.dayPlan(for: date) ?? DayPlan(date: date))
         let selection = try DayPlanEngine.activeSelection(in: plan, at: minuteOfDay)
         let sortedChain = selection.chain.sorted(by: nowChainSort)
 
@@ -211,6 +240,53 @@ public enum ThingStructPresentation {
             activeBlockID: selection.activeBlock?.id,
             taskSourceBlockID: selection.taskSourceBlock?.id
         )
+
+        let userBlocks = plan.blocks.filter { !$0.isCancelled && !$0.isBlankBaseBlock }
+        let activeUserBlock = selection.activeBlock?.isBlankBaseBlock == false ? selection.activeBlock : nil
+        let taskSourceTasks = selection.taskSourceBlock?.tasks
+            .filter { !$0.isCompleted }
+            .sorted(by: taskSort) ?? []
+        let upcoming = try DayPlanEngine.upcomingActiveBlock(in: plan, after: minuteOfDay)
+
+        let focusState: NowFocusState
+        if userBlocks.isEmpty {
+            focusState = .noRoutine
+        } else if activeUserBlock != nil {
+            focusState = .active
+        } else if let firstStart = userBlocks.compactMap(\.resolvedStartMinuteOfDay).min(), minuteOfDay < firstStart {
+            focusState = .beforeFirstBlock
+        } else if upcoming != nil {
+            focusState = .openTime
+        } else {
+            focusState = .finished
+        }
+
+        let focusBlock = activeUserBlock.flatMap { block -> NowFocusBlock? in
+            guard
+                let start = block.resolvedStartMinuteOfDay,
+                let end = block.resolvedEndMinuteOfDay
+            else {
+                return nil
+            }
+            return NowFocusBlock(
+                id: block.id,
+                title: block.title,
+                note: block.note,
+                startMinuteOfDay: start,
+                endMinuteOfDay: end,
+                taskSourceBlockID: selection.taskSourceBlock?.id,
+                taskSourceTitle: selection.taskSourceBlock?.title,
+                visibleTasks: Array(taskSourceTasks.prefix(3)),
+                remainingTaskCount: taskSourceTasks.count
+            )
+        }
+        let upcomingBlock = upcoming.map {
+            NowUpcomingBlock(
+                id: $0.block.id,
+                title: $0.block.title,
+                transitionMinuteOfDay: $0.transitionMinuteOfDay
+            )
+        }
 
         let statusMessage: String?
         if !taskSections.isEmpty {
@@ -232,7 +308,10 @@ public enum ThingStructPresentation {
             noteSections: noteSections,
             statusMessage: statusMessage,
             taskSourceTitle: selection.taskSourceBlock?.title,
-            taskSections: taskSections
+            taskSections: taskSections,
+            focusState: focusState,
+            focusBlock: focusBlock,
+            upcomingBlock: upcomingBlock
         )
     }
 

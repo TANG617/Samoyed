@@ -28,7 +28,7 @@ struct WeekdayPicker: View {
 
     private func toggleDay(_ day: Weekday) {
         // Explicit animation is opt-in in SwiftUI.
-        withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
+        withAnimation(.spring(response: 0.28, dampingFraction: 1.0)) {
             if selectedDays.contains(day) {
                 selectedDays.remove(day)
             } else {
@@ -59,7 +59,7 @@ struct WeekdayButton: View {
                         .font(.caption2)
                 }
             }
-                .frame(maxWidth: .infinity, minHeight: 38)
+                .frame(maxWidth: .infinity, minHeight: 44)
                 .padding(.horizontal, 8)
                 .background(backgroundColor)
                 .foregroundStyle(foregroundColor)
