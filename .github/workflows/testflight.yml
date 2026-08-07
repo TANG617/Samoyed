@@ -149,15 +149,19 @@ jobs:
         env:
           APP_PROFILES_JSON: ${{ steps.app_profiles.outputs.profiles }}
           WIDGET_PROFILES_JSON: ${{ steps.widget_profiles.outputs.profiles }}
+          EXPECTED_APP_PROFILE_NAME: ThingStruct App Store CI
+          EXPECTED_WIDGET_PROFILE_NAME: ThingStruct Widget App Store CI
         run: |
           set -euo pipefail
 
           app_profile_name="$(
-            jq -er 'map(select(.type == "IOS_APP_STORE")) | first | .name' \
+            jq -er --arg expected "$EXPECTED_APP_PROFILE_NAME" \
+              'map(select(.type == "IOS_APP_STORE" and .name == $expected)) | first | .name' \
               <<< "$APP_PROFILES_JSON"
           )"
           widget_profile_name="$(
-            jq -er 'map(select(.type == "IOS_APP_STORE")) | first | .name' \
+            jq -er --arg expected "$EXPECTED_WIDGET_PROFILE_NAME" \
+              'map(select(.type == "IOS_APP_STORE" and .name == $expected)) | first | .name' \
               <<< "$WIDGET_PROFILES_JSON"
           )"
 
