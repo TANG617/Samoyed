@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core-tests:
+    name: Core tests
+    runs-on: macos-26
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: Record toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Run core tests
+        run: swift test
+
+  ios-archive:
+    name: Unsigned iOS archive
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: Record Xcode version
+        run: xcodebuild -version
+
+      - name: Archive app and embedded widget without signing
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project ThingStruct.xcodeproj \
+            -scheme ThingStruct \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/ThingStruct.xcarchive" \
+            -derivedDataPath "$RUNNER_TEMP/ThingStruct-DerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            archive
+
+      - name: Verify archive contents and privacy manifests
+        run: |
+          set -euo pipefail
+          app_path="$RUNNER_TEMP/ThingStruct.xcarchive/Products/Applications/ThingStruct.app"
+          widget_path="$app_path/PlugIns/ThingStructWidgetExtension.appex"
+          test -d "$app_path"
+          test -d "$widget_path"
+          test -f "$app_path/PrivacyInfo.xcprivacy"
+          test -f "$widget_path/PrivacyInfo.xcprivacy"
+          plutil -lint "$app_path/PrivacyInfo.xcprivacy"
+          plutil -lint "$widget_path/PrivacyInfo.xcprivacy"

@@ -503,7 +503,7 @@ public struct SuggestedDayTemplate: Identifiable, Equatable, Codable, Sendable {
 public struct SavedDayTemplate: Identifiable, Equatable, Codable, Sendable {
     public var id: UUID
     public var title: String
-    public var sourceSuggestedTemplateID: UUID
+    public var sourceSuggestedTemplateID: UUID?
     public var blocks: [BlockTemplate]
     public var createdAt: Date
     public var updatedAt: Date
@@ -511,7 +511,7 @@ public struct SavedDayTemplate: Identifiable, Equatable, Codable, Sendable {
     public init(
         id: UUID = UUID(),
         title: String,
-        sourceSuggestedTemplateID: UUID,
+        sourceSuggestedTemplateID: UUID? = nil,
         blocks: [BlockTemplate],
         createdAt: Date = Date(),
         updatedAt: Date = Date()
@@ -522,6 +522,100 @@ public struct SavedDayTemplate: Identifiable, Equatable, Codable, Sendable {
         self.blocks = blocks
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+    }
+}
+
+// A focused description of the next user-authored block that will become visible.
+// `transitionMinuteOfDay` is intentionally distinct from the block's authored start:
+// an overlay can end and reveal a parent block that started earlier in the day.
+public struct UpcomingActiveBlock: Equatable, Sendable {
+    public var block: TimeBlock
+    public var transitionMinuteOfDay: Int
+
+    public init(block: TimeBlock, transitionMinuteOfDay: Int) {
+        self.block = block
+        self.transitionMinuteOfDay = transitionMinuteOfDay
+    }
+}
+
+// The only P0 edit shape for a materialized day. It preserves identity and hierarchy,
+// and deliberately excludes reminders, layer controls, and template scheduling.
+public struct TodayBlockCorrection: Equatable, Sendable {
+    public var blockID: UUID
+    public var title: String
+    public var startMinuteOfDay: Int
+    public var endMinuteOfDay: Int
+    public var note: String?
+    public var tasks: [TaskItem]
+
+    public init(
+        blockID: UUID,
+        title: String,
+        startMinuteOfDay: Int,
+        endMinuteOfDay: Int,
+        note: String? = nil,
+        tasks: [TaskItem]
+    ) {
+        self.blockID = blockID
+        self.title = title
+        self.startMinuteOfDay = startMinuteOfDay
+        self.endMinuteOfDay = endMinuteOfDay
+        self.note = note
+        self.tasks = tasks
+    }
+}
+
+public enum ValidationEventName: String, Codable, Sendable {
+    case activationStarted
+    case activationCompleted
+    case activationFailed
+    case nowVisible
+    case checklistCompleted
+    case checklistUndone
+    case todayDifferentOpened
+    case todayDifferentCompleted
+    case todayCorrectionOpened
+    case todayCorrectionCompleted
+    case dayTypeEditOpened
+    case dayTypeEditCompleted
+}
+
+// The validation event has a closed metadata shape on purpose: user-authored titles,
+// notes, task text, and domain identifiers cannot accidentally enter the log.
+public struct ValidationEvent: Codable, Equatable, Sendable {
+    public var schemaVersion: Int
+    public var id: UUID
+    public var participantID: UUID
+    public var sessionID: UUID
+    public var occurredAt: Date
+    public var localDay: LocalDay
+    public var name: ValidationEventName
+    public var outcome: String?
+    public var variant: String?
+    public var durationMilliseconds: Int?
+
+    public init(
+        schemaVersion: Int = 1,
+        id: UUID = UUID(),
+        participantID: UUID,
+        sessionID: UUID,
+        occurredAt: Date = .now,
+        localDay: LocalDay? = nil,
+        name: ValidationEventName,
+        outcome: String? = nil,
+        variant: String? = nil,
+        durationMilliseconds: Int? = nil
+    ) {
+        self.schemaVersion = schemaVersion
+        self.id = id
+        self.participantID = participantID
+        self.sessionID = sessionID
+        self.occurredAt = occurredAt
+        self.localDay = localDay ?? LocalDay(date: occurredAt)
+        self.name = name
+        self.outcome = outcome
+        self.variant = variant
+        self.durationMilliseconds = durationMilliseconds
     }
 }
 

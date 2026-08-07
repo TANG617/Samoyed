@@ -72,6 +72,90 @@ public enum TemplateEngine {
         )
     }
 
+    public static func makeSimpleSavedTemplate(
+        title: String,
+        blocks: [BlockTemplate],
+        createdAt: Date = Date()
+    ) throws -> SavedDayTemplate {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedTitle.isEmpty else {
+            throw ThingStructCoreError.emptyTemplateTitle
+        }
+        guard !blocks.isEmpty else {
+            throw ThingStructCoreError.emptyTemplateBlocks
+        }
+
+        for block in blocks {
+            guard block.layerIndex == 0, block.parentTemplateBlockID == nil else {
+                throw ThingStructCoreError.invalidRootBlock(block.id)
+            }
+            guard case .absolute = block.timing else {
+                throw ThingStructCoreError.baseBlockMustUseAbsoluteTiming(block.id)
+            }
+        }
+
+        let sortedBlocks = normalized(blocks: blocks).sorted { lhs, rhs in
+            let lhsStart = absoluteStart(of: lhs)
+            let rhsStart = absoluteStart(of: rhs)
+            if lhsStart != rhsStart {
+                return lhsStart < rhsStart
+            }
+            return lhs.id.uuidString < rhs.id.uuidString
+        }
+        let template = SavedDayTemplate(
+            title: trimmedTitle,
+            blocks: sortedBlocks,
+            createdAt: createdAt,
+            updatedAt: createdAt
+        )
+        _ = try previewDayPlan(from: template)
+        return template
+    }
+
+    public static func activate(
+        document: ThingStructDocument,
+        template: SavedDayTemplate,
+        assignedWeekdays: Set<Weekday>,
+        today: LocalDay,
+        activatedAt: Date = Date()
+    ) throws -> ThingStructDocument {
+        guard !assignedWeekdays.isEmpty else {
+            throw ThingStructCoreError.emptyActivationWeekdays
+        }
+        _ = try previewDayPlan(from: template)
+
+        var activated = document
+        activated.savedTemplates.removeAll { $0.id == template.id }
+        activated.savedTemplates.append(template)
+        activated.weekdayRules.removeAll { rule in
+            rule.savedTemplateID == template.id || assignedWeekdays.contains(rule.weekday)
+        }
+        activated.weekdayRules.append(contentsOf: assignedWeekdays
+            .sorted { $0.rawValue < $1.rawValue }
+            .map { WeekdayTemplateRule(weekday: $0, savedTemplateID: template.id) })
+        activated.weekdayRules.sort { $0.weekday.rawValue < $1.weekday.rawValue }
+
+        let outcome = try chooseTemplate(
+            for: today,
+            templateID: template.id,
+            source: .pickedTemplate,
+            existingDayPlans: activated.dayPlans,
+            savedTemplates: activated.savedTemplates,
+            selectedAt: activatedAt,
+            forceReplace: true
+        )
+
+        guard case let .applied(selection, dayPlan) = outcome else {
+            return activated
+        }
+        activated.daySelections.removeAll { $0.date == today }
+        activated.daySelections.append(selection)
+        activated.dayPlans.removeAll { $0.date == today }
+        activated.dayPlans.append(dayPlan)
+        activated.dayPlans.sort { $0.date < $1.date }
+        return activated
+    }
+
     public static func selectedSavedTemplate(
         for date: LocalDay,
         savedTemplates: [SavedDayTemplate],
@@ -107,15 +191,13 @@ public enum TemplateEngine {
         existingDayPlans: [DayPlan],
         daySelections: [DayTemplateSelection]
     ) throws -> Bool {
-        guard date == today else {
-            return false
-        }
-
-        if try uniqueDayPlan(for: date, in: existingDayPlans) != nil {
-            return false
-        }
-
-        return latestDaySelection(for: date, in: daySelections) == nil
+        // v0.3 defaults run automatically. This compatibility query remains for
+        // frozen system surfaces, but the product no longer has a daily chooser gate.
+        _ = date
+        _ = today
+        _ = existingDayPlans
+        _ = daySelections
+        return false
     }
 
     public static func chooseTemplate(
@@ -572,6 +654,15 @@ public enum TemplateEngine {
                 return updatedBlueprint
             }
             return updatedBlock
+        }
+    }
+
+    private static func absoluteStart(of block: BlockTemplate) -> Int {
+        switch block.timing {
+        case let .absolute(startMinuteOfDay, _):
+            return startMinuteOfDay
+        case .relative:
+            return .max
         }
     }
 }

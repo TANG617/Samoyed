@@ -124,6 +124,20 @@ enum ThingStructWidgetSnapshotBuilder {
         from now: NowScreenModel,
         maxTaskCount: Int
     ) -> ThingStructWidgetSnapshot {
+        if now.focusState == .noRoutine, !now.activeChain.contains(where: { !$0.isBlank }) {
+            return ThingStructWidgetSnapshot(
+                date: now.date,
+                minuteOfDay: now.minuteOfDay,
+                requiresTemplateSelection: false,
+                currentBlockTitle: nil,
+                currentBlockTimeRangeText: nil,
+                blocks: [],
+                remainingTaskCount: 0,
+                tasks: [],
+                statusMessage: "No routine today"
+            )
+        }
+
         // 先把当前活跃链转换成轻量 block 列表。
         let blocks = now.activeChain.map { item in
             ThingStructWidgetBlockItem(

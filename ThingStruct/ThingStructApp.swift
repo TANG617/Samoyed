@@ -45,11 +45,38 @@ struct ContentView: View {
     init(store: ThingStructStore? = nil) {
         // `@MainActor` 表示这个初始化过程要求在主线程/主 actor 上运行。
         // UI 相关对象通常都应该这么做，避免线程竞争和 UI 读写越界。
-        _store = State(initialValue: store ?? ThingStructStore())
+        #if DEBUG
+        let resolvedStore = store ?? ThingStructUITestSupport.makeStoreIfRequested() ?? ThingStructStore()
+        #else
+        let resolvedStore = store ?? ThingStructStore()
+        #endif
+        _store = State(initialValue: resolvedStore)
     }
 
     var body: some View {
-        AppShellView()
+        Group {
+            switch store.bootstrapState {
+            case .loading:
+                ScreenLoadingView(
+                    title: "Loading ThingStruct",
+                    systemImage: "clock",
+                    description: "Opening your local day structure."
+                )
+
+            case .needsActivation:
+                ActivationRootView()
+
+            case .ready:
+                AppShellView()
+
+            case let .loadError(message):
+                RecoverableErrorView(
+                    title: "Unable to Open Your Data",
+                    message: message,
+                    retry: store.retryBootstrap
+                )
+            }
+        }
             // `.environment(store)` 会把 store 注入到整棵子视图树。
             // 后代视图可以用 `@Environment(ThingStructStore.self)` 直接取到它，
             // 不需要像传统 MVC/MVVM 那样层层手传。
@@ -59,7 +86,7 @@ struct ContentView: View {
                 // 可以把它看成“和这个 View 生命周期绑定的启动钩子”。
                 store.loadIfNeeded()
                 consumePendingExternalRoute()
-                ThingStructQuickActionManager.refresh()
+                ThingStructSystemSurfaceDormancy.apply()
             }
             // 当系统用 URL 打开 app 时，这里会收到回调。
             // iOS 的 deep link、widget 点击、shortcut 跳转，很多最终都会落到这里。
@@ -73,13 +100,11 @@ struct ContentView: View {
                 applyExternalURL(url)
             }
             .onChange(of: scenePhase) { _, newPhase in
-                // 当 app 回到前台时，重新加载文档/刷新快捷操作/同步 live activity。
+                // Reload shared data on foreground without reactivating frozen surfaces.
                 // 这是移动端常见的做法：因为应用可能在后台被系统暂停很久，
                 // 重新激活时需要一次“轻量复位”。
                 guard newPhase == .active, store.isLoaded else { return }
                 store.reload()
-                store.syncCurrentBlockLiveActivity()
-                ThingStructQuickActionManager.refresh()
                 consumePendingExternalRoute()
             }
     }
@@ -200,10 +225,9 @@ final class ThingStructAppDelegate: NSObject, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
-        // App Intents / App Shortcuts 的参数元数据通常在启动时刷新一次。
-        ThingStructShortcutsProvider.updateAppShortcutParameters()
-        // 通知的 category/action 也要在启动时注册到系统。
-        ThingStructNotificationCoordinator.shared.configure()
+        Task { @MainActor in
+            ThingStructSystemSurfaceDormancy.apply()
+        }
         return true
     }
 }
