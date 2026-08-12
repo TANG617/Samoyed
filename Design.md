@@ -1,6 +1,6 @@
 # Samoyed Design
 
-本文档定义 Samoyed 的 iOS 产品结构、界面层级和术语。当前设计以 [PRD.md](PRD.md) 为准：Samoyed 是一个 config-first routine runner，routine 结构由 `Routine Definition` 定义，App 只负责每日选择、物化、展示、提醒和 checklist 执行。
+本文档定义 Samoyed 的 iOS 产品结构、界面层级和术语。当前设计以 [PRD.md](PRD.md) 为准：Samoyed 是一个 routine runner，少数稳定 Day Type 通过 weekday default 自动运行；App 负责物化、展示、提醒、checklist 执行与当天例外。
 
 如果本文档与 PRD 冲突，以 PRD 为准。
 
@@ -11,14 +11,14 @@ Samoyed 的界面目标是让用户稳定运行已经定义好的 routine，而�
 UI 应帮助用户完成四件事：
 
 - 导入并理解可运行的 Routine Definition。
-- 每个本地自然日选择一个 routine。
-- 查看当天 Materialized Day 的只读结构。
+- 让 weekday default 自动运行，只有当天例外才要求显式选择。
+- 查看当天 Materialized Day，并在必要时做 Today-only correction。
 - 在执行过程中完成 checklist item。
 
 UI 不应承担：
 
 - 可视化 routine builder。
-- Today 页面里的 block 创建、编辑、拖拽、resize、cancel。
+- Today 页面里的 block 创建、删除、reparent、拖拽 resize、cancel 或 checklist/reminder 编辑。
 - 从当天临时结构保存为 routine。
 - task inbox 或 ad hoc todo capture。
 
@@ -28,9 +28,9 @@ UI 不应承担：
 
 1. 我先在配置文件或外部工具里定义 routine。
 2. 我把 Routine Config File 导入 Samoyed。
-3. 我每天选择一个 routine。
-4. App 把它物化为当天只读结构。
-5. 我只在当天勾选 checklist，完成状态不会改动 routine 本身。
+3. App 根据 weekday default 自动选择今天的 routine。
+4. 只有“Today is different”时，我才选择日期级例外。
+5. App 把选择物化为当天运行快照；Today-only correction 和 checklist completion 都不会改动 Saved Day Type。
 
 ## 3. Terminology
 
@@ -91,7 +91,7 @@ v1 规则：
 
 ### 3.5 Materialized Day
 
-`Materialized Day` 是 Daily Routine Selection 在某个日期上的只读投影。
+`Materialized Day` 是 Daily Routine Selection 在某个日期上的运行快照；它可以包含不写回来源 routine 的 Today-only correction。
 
 它包含：
 
@@ -182,11 +182,11 @@ flowchart TD
 
 ### Purpose
 
-`Today` 回答：今天选择的 routine 被物化成了什么结构？
+`Today` 回答：今天自动或显式选择的 routine 被物化成了什么结构，今天是否需要轻量修正？
 
 ### Shows
 
-- 只读 timeline。
+- 查看优先的 timeline。
 - block / overlay 层级。
 - open time gap。
 - selected block detail。
@@ -199,11 +199,12 @@ flowchart TD
 - 展开或收起详情面板。
 - 跳到当前 active block。
 - 勾选 checklist item，前提是该 checklist item 是执行状态的一部分。
+- 通过明确的 Today-only 入口修正既有 block 的标题、开始/结束时间和 note。
 
 ### Does Not Allow
 
 - 创建 block。
-- 编辑 block title、time、note、checklist、reminder。
+- 修改 checklist、reminder 或 block 层级。
 - 拖拽或 resize block。
 - cancel block。
 - add overlay。
@@ -279,11 +280,11 @@ Widgets、Live Activities、Controls、Shortcuts、notifications 只服务运行
 - 使用动态字体。
 - 保持信息密度清晰，不做营销式 landing page。
 
-Today timeline 可以定制视觉，但必须保持只读心智：
+Today timeline 可以定制视觉，但必须保持查看优先、修正受限的心智：
 
 - selected state 可以高亮。
 - open gap 可以显示，但不应使用加号暗示新增。
-- block detail 面板不出现编辑 action group。
+- block detail 只允许一个明确标记为 Today only 的轻量修正入口，不出现通用编辑 action group。
 
 ## 11. Implementation Notes
 
@@ -298,10 +299,10 @@ Today timeline 可以定制视觉，但必须保持只读心智：
 
 ## 12. Acceptance Checklist
 
-- Today 没有 block create/edit/resize/cancel/add overlay。
+- Today 没有 block create/delete/reparent/drag-resize/cancel/add overlay，也不编辑 checklist/reminder。
 - Today 没有 save today as routine。
 - Library 使用 Routines 和 Routine Config Files 术语。
 - Routine Config File import 加入 library，不替换今天。
-- 每天选择一个 routine。
+- weekday default 自动运行；“Today is different”只覆盖某个日期且不改变 usual week。
 - Checklist completion 只改变 Execution State。
 - System surfaces 不提供结构编辑能力。

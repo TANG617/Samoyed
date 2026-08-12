@@ -66,7 +66,13 @@ final class SamoyedP0UITests: XCTestCase {
         title.tap()
         let existingTitle = title.value as? String ?? ""
         title.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: existingTitle.count))
-        title.typeText("Afternoon Updated")
+        let correctedTitle = "Afternoon Updated"
+        title.typeText(correctedTitle)
+        let titleCommitted = expectation(
+            for: NSPredicate(format: "value == %@", correctedTitle),
+            evaluatedWith: title
+        )
+        wait(for: [titleCommitted], timeout: 3)
         app.buttons["today-correction-save"].tap()
 
         XCTAssertTrue(app.buttons["Close"].waitForExistence(timeout: 3))
@@ -122,5 +128,31 @@ final class SamoyedP0UITests: XCTestCase {
 
         XCTAssertTrue(app.tabBars.buttons["Now"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["now-today-different"].exists)
+    }
+
+    @MainActor
+    func testVoiceOverKeepsCriticalAccessibilityIdentifiersReachable() throws {
+        app.launch()
+
+        XCTAssertTrue(app.navigationBars["Set Up Samoyed"].waitForExistence(timeout: 5))
+        let nameField = app.textFields["day-type-name"]
+        let startButton = app.buttons["activation-start"]
+        XCTAssertTrue(nameField.exists)
+        XCTAssertTrue(startButton.exists)
+
+        #if compiler(>=6.4)
+        if #available(iOS 27.0, *) {
+            let voiceOver = XCUIDevice.shared.voiceOverService
+            try voiceOver.enable()
+            addTeardownBlock {
+                try voiceOver.disable()
+            }
+            XCTAssertTrue(voiceOver.isEnabled)
+            XCTAssertFalse(try voiceOver.currentSpeech().utterance.isEmpty)
+        }
+        #endif
+
+        XCTAssertTrue(app.textFields["day-type-name"].exists)
+        XCTAssertTrue(app.buttons["activation-start"].exists)
     }
 }
