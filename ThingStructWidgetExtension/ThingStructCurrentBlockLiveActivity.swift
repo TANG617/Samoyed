@@ -3,86 +3,62 @@ import AppIntents
 import SwiftUI
 import WidgetKit
 
-// 这是 Live Activity 的 UI 定义文件。
-// 和普通 Widget 的最大区别是：
-// - 数据来源是 `ActivityAttributes + ContentState`
-// - 展示位置包括锁屏和 Dynamic Island
-// - 内容会随着 activity state 更新而变化
 @available(iOS 16.1, *)
 struct ThingStructCurrentBlockLiveActivity: Widget {
-    private var themeTint: Color {
-        AppTintPreset.current.tintColor
-    }
-
     var body: some WidgetConfiguration {
-        // `ActivityConfiguration` 相当于 Live Activity 世界里的根配置入口。
         ActivityConfiguration(for: ThingStructCurrentBlockActivityAttributes.self) { context in
             ThingStructLiveActivityLockScreenView(context: context)
                 .widgetURL(context.tapURL)
-                .activityBackgroundTint(.clear)
-                .activitySystemActionForegroundColor(.white)
+                .activityBackgroundTint(context.state.activityBackground)
+                .activitySystemActionForegroundColor(context.state.accent)
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    // Dynamic Island 展开态的左上角区域。
-                    Text(context.state.title)
-                        .font(.headline)
-                        .lineLimit(1)
-                        .padding(.leading, 8)
-                        .padding(.top, 6)
+                    HStack(spacing: 7) {
+                        ThingStructLiveActivityMark(accent: context.state.accent, compact: true)
+
+                        Text(context.state.title)
+                            .font(.headline)
+                            .lineLimit(1)
+                    }
+                    .padding(.leading, 4)
+                    .padding(.top, 2)
                 }
 
                 DynamicIslandExpandedRegion(.trailing) {
-                    ThingStructLiveActivitySummaryBadge(state: context.state)
-                        .padding(.trailing, 8)
+                    Text(context.state.remainingLabel)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(context.state.accent)
+                        .contentTransition(.numericText())
+                        .padding(.trailing, 4)
                         .padding(.top, 4)
                 }
 
                 DynamicIslandExpandedRegion(.bottom) {
-                    // 展开态底部放更详细的信息和动作按钮。
-                    ThingStructLiveActivityExpandedContent(context: context)
-                        .padding(.horizontal, 8)
-                        .padding(.top, 4)
-                        .padding(.bottom, 8)
+                    ThingStructLiveActivityBody(
+                        state: context.state,
+                        noteLineLimit: context.state.displaySourceBlockTitle == nil ? 2 : 3,
+                        compact: true
+                    )
+                    .padding(.horizontal, 4)
+                    .padding(.top, 6)
+                    .padding(.bottom, 4)
                 }
             } compactLeading: {
                 Image(systemName: context.state.compactIconName)
-                    .foregroundStyle(themeTint)
+                    .foregroundStyle(context.state.accent)
             } compactTrailing: {
                 Text(context.state.compactTrailingText)
                     .font(.caption2.weight(.semibold))
+                    .contentTransition(.numericText())
             } minimal: {
                 Image(systemName: context.state.minimalIconName)
                     .font(.caption2.weight(.semibold))
+                    .foregroundStyle(context.state.accent)
             }
             .widgetURL(context.tapURL)
-            .keylineTint(themeTint)
+            .keylineTint(context.state.accent)
         }
-    }
-}
-
-@available(iOS 16.1, *)
-private struct ThingStructLiveActivitySummaryBadge: View {
-    let state: ThingStructCurrentBlockActivityAttributes.ContentState
-
-    private var themeTint: Color {
-        AppTintPreset.current.tintColor
-    }
-
-    var body: some View {
-        // 这是一个纯展示用的小徽章，不带业务逻辑。
-        HStack(spacing: 4) {
-            Image(systemName: state.compactIconName)
-                .imageScale(.small)
-
-            Text(state.summaryBadgeText)
-                .lineLimit(1)
-        }
-        .font(.caption.weight(.semibold))
-        .foregroundStyle(themeTint)
-        .padding(.horizontal, 9)
-        .padding(.vertical, 6)
-        .background(themeTint.opacity(0.12), in: Capsule())
     }
 }
 
@@ -91,266 +67,200 @@ private struct ThingStructLiveActivityLockScreenView: View {
     let context: ActivityViewContext<ThingStructCurrentBlockActivityAttributes>
 
     var body: some View {
-        // 锁屏态比 Dynamic Island 空间更大，所以排版更舒展。
-        VStack(alignment: .leading, spacing: 12) {
-            Text(context.state.title)
-                .font(.title2.weight(.semibold))
-                .lineLimit(1)
-
+        VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 10) {
-                Text(context.state.timeRangeText)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                ThingStructLiveActivityMark(accent: context.state.accent)
+
+                Text(context.state.title)
+                    .font(.headline)
                     .lineLimit(1)
 
-                Spacer(minLength: 0)
+                Spacer(minLength: 8)
 
-                Text(summaryTitle)
+                Text(context.state.remainingLabel)
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                    .foregroundStyle(context.state.accent)
+                    .contentTransition(.numericText())
             }
 
-            ThingStructLiveActivityDetailContent(
-                state: context.state,
-                noteLineLimit: 3,
-                taskLineLimit: 2,
-                noteFont: .subheadline,
-                taskFont: .body,
-                metaFont: .caption
-            )
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 20)
-        .padding(.vertical, 20)
-    }
-
-    private var summaryTitle: String {
-        context.state.statusSummary
-    }
-}
-
-@available(iOS 16.1, *)
-private struct ThingStructLiveActivityExpandedContent: View {
-    let context: ActivityViewContext<ThingStructCurrentBlockActivityAttributes>
-
-    var body: some View {
-        // 这是 Dynamic Island 展开态底部内容。
-        VStack(alignment: .leading, spacing: 8) {
-            Text(context.state.timeRangeText)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-
-            ThingStructLiveActivityDetailContent(
+            ThingStructLiveActivityBody(
                 state: context.state,
                 noteLineLimit: 2,
-                taskLineLimit: 1,
-                noteFont: .caption,
-                taskFont: .subheadline,
-                metaFont: .caption2
+                compact: false
             )
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 10)
     }
 }
 
 @available(iOS 16.1, *)
-private struct ThingStructLiveActivityDetailContent: View {
+private struct ThingStructLiveActivityBody: View {
     let state: ThingStructCurrentBlockActivityAttributes.ContentState
     let noteLineLimit: Int
-    let taskLineLimit: Int
-    let noteFont: Font
-    let taskFont: Font
-    let metaFont: Font
-
-    private var themeTint: Color {
-        AppTintPreset.current.tintColor
-    }
+    let compact: Bool
 
     var body: some View {
-        // 细节区会按“来源块 -> note -> 当前任务/完成状态”的顺序显示。
-        VStack(alignment: .leading, spacing: 10) {
-            if let displaySourceBlockTitle = state.displaySourceBlockTitle {
-                Label("From \(displaySourceBlockTitle)", systemImage: "arrow.turn.down.right")
-                    .font(metaFont.weight(.semibold))
-                    .foregroundStyle(themeTint)
-                    .lineLimit(1)
-            }
+        if state.isCaughtUp {
+            caughtUpContent
+        } else {
+            VStack(alignment: .leading, spacing: compact ? 8 : 10) {
+                if let sourceTitle = state.displaySourceBlockTitle {
+                    Text("FROM \(sourceTitle.uppercased())")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(state.accent)
+                        .lineLimit(1)
+                }
 
-            if let displayNote = state.displayNote {
-                noteRow(displayNote)
-            }
+                if let note = state.displayNote {
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: "note.text")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(state.accent)
+                            .padding(.top, 2)
 
-            if let taskIntent = state.actionableTaskIntent, let taskTitle = state.actionableTaskTitle {
-                taskRow(title: taskTitle, intent: taskIntent)
-            } else {
-                completionState
+                        Text(note)
+                            .font(compact ? .caption : .subheadline)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(noteLineLimit)
+                            .multilineTextAlignment(.leading)
+
+                        Spacer(minLength: 0)
+                    }
+                }
+
+                if !state.actionableTasks.isEmpty {
+                    HStack(spacing: 8) {
+                        ForEach(state.actionableTasks.prefix(2)) { item in
+                            ThingStructLiveActivityTaskToggle(
+                                item: item,
+                                accent: state.accent,
+                                compact: compact
+                            )
+                        }
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private var caughtUpContent: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.title3)
+                .foregroundStyle(.secondary)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("All caught up")
+                    .font(.subheadline.weight(.semibold))
+
+                Text("Nothing needs your attention.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
+}
 
-    private func noteRow(_ text: String) -> some View {
-        // note 行只是一个小型复合视图，抽成私有 helper 让主体更易读。
-        HStack(alignment: .top, spacing: 8) {
-            Image(systemName: "note.text")
-                .font(metaFont.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .padding(.top, 2)
+@available(iOS 17.0, *)
+private struct ThingStructLiveActivityTaskToggle: View {
+    let item: ThingStructCurrentBlockActivityAttributes.ActionItem
+    let accent: Color
+    let compact: Bool
 
-            Text(text)
-                .font(noteFont)
-                .foregroundStyle(.secondary)
-                .lineLimit(noteLineLimit)
-                .multilineTextAlignment(.leading)
-
-            Spacer(minLength: 0)
-        }
-    }
-
-    private func taskRow(
-        title: String,
-        intent: CompleteLiveActivityTaskIntent
-    ) -> some View {
-        // 把整行都做成显式动作按钮，避免只有尾部小图标可点。
-        Button(intent: intent) {
-            HStack(alignment: .center, spacing: 12) {
-                Image(systemName: "circle")
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(themeTint)
-                    .frame(width: 34, height: 34)
-                    .background(
-                        Circle()
-                            .fill(themeTint.opacity(0.14))
-                    )
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Label("Current task", systemImage: "checklist")
-                        .font(metaFont.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-
-                    Text(title)
-                        .font(taskFont)
-                        .foregroundStyle(.primary)
-                        .lineLimit(taskLineLimit)
-                        .multilineTextAlignment(.leading)
-                }
-
-                Spacer(minLength: 0)
-
-                Text("Complete")
-                    .font(metaFont.weight(.semibold))
-                    .foregroundStyle(themeTint)
+    var body: some View {
+        Toggle(
+            isOn: false,
+            intent: CompleteLiveActivityTaskIntent(
+                dateISO: item.dateISO,
+                blockID: item.blockID,
+                taskID: item.taskID
+            )
+        ) {
+            Label {
+                Text(item.title)
+                    .font((compact ? Font.caption2 : Font.caption).weight(.semibold))
                     .lineLimit(1)
+                    .minimumScaleFactor(0.78)
+            } icon: {
+                Image(systemName: "circle")
+                    .imageScale(.small)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(themeTint.opacity(0.08))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .strokeBorder(themeTint.opacity(0.18), lineWidth: 1)
-            )
-            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
+        .toggleStyle(.button)
         .buttonStyle(.plain)
-        .accessibilityLabel("Complete current live activity task")
-        .accessibilityHint("Marks \(title) complete")
+        .tint(accent)
+        .padding(.horizontal, compact ? 8 : 10)
+        .frame(maxWidth: .infinity, minHeight: compact ? 30 : 36)
+        .background(.quaternary, in: RoundedRectangle(cornerRadius: compact ? 10 : 12, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: compact ? 10 : 12, style: .continuous))
+        .accessibilityLabel("Complete \(item.title)")
+        .accessibilityHint("Marks this checklist item complete without opening ThingStruct")
     }
+}
 
-    private var completionState: some View {
-        // 没有可直接操作的任务时，显示一个只读状态区。
-        VStack(alignment: .leading, spacing: 4) {
-            Label(completionTitle, systemImage: completionIconName)
-                .font(taskFont.weight(.semibold))
-                .lineLimit(1)
+@available(iOS 16.1, *)
+private struct ThingStructLiveActivityMark: View {
+    let accent: Color
+    var compact = false
 
-            if let statusMessage = state.statusMessage {
-                Text(statusMessage)
-                    .font(metaFont)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-            }
-        }
-    }
-
-    private var completionTitle: String {
-        state.statusSummary
-    }
-
-    private var completionIconName: String {
-        state.remainingTaskCount == 0
-            ? "checkmark.circle.fill"
-            : "checklist"
+    var body: some View {
+        Image(systemName: "bolt.fill")
+            .font(compact ? .caption2.weight(.bold) : .caption.weight(.bold))
+            .foregroundStyle(.white)
+            .frame(width: compact ? 22 : 28, height: compact ? 22 : 28)
+            .background(accent, in: Circle())
+            .accessibilityHidden(true)
     }
 }
 
 @available(iOS 16.1, *)
 private extension ActivityViewContext<ThingStructCurrentBlockActivityAttributes> {
     var tapURL: URL? {
-        // activity 点击跳回 app 时，系统只知道这里提供的 URL。
         URL(string: state.tapURL)
     }
 }
 
 @available(iOS 16.1, *)
 private extension ThingStructCurrentBlockActivityAttributes.ContentState {
-    var hasActionableTask: Bool {
-        actionableTaskIntent != nil && actionableTaskTitle != nil
+    var isCaughtUp: Bool {
+        remainingTaskCount == 0
     }
 
-    var actionableTaskIntent: CompleteLiveActivityTaskIntent? {
-        // 只有在 state 里携带了完整的日期/block/task 标识时，才生成可执行 intent。
-        guard
-            let actionableTaskDateISO,
-            let actionableTaskBlockID,
-            let actionableTaskID
-        else {
-            return nil
-        }
+    var accent: Color {
+        isCaughtUp ? .secondary : AppTintPreset.current.tintColor
+    }
 
-        return CompleteLiveActivityTaskIntent(
-            dateISO: actionableTaskDateISO,
-            blockID: actionableTaskBlockID,
-            taskID: actionableTaskID
-        )
+    var activityBackground: Color {
+        isCaughtUp
+            ? LayerVisualStyle.forBlock(layerIndex: 0, isBlank: true).surface
+            : LayerVisualStyle.forBlock(layerIndex: 1, isBlank: false).surface
+    }
+
+    var remainingLabel: String {
+        isCaughtUp ? "Done" : "\(remainingTaskCount) left"
     }
 
     var compactIconName: String {
-        // 紧凑态图标根据是否有任务可操作、是否已全部完成来变化。
-        if hasActionableTask {
-            return "checkmark.circle"
-        }
-        return remainingTaskCount == 0 ? "checkmark.circle.fill" : "info.circle"
+        isCaughtUp ? "checkmark.circle.fill" : "bolt.fill"
     }
 
     var minimalIconName: String {
-        if hasActionableTask {
-            return "checkmark.circle"
-        }
-        return remainingTaskCount == 0 ? "checkmark" : "ellipsis.circle"
+        isCaughtUp ? "checkmark" : "bolt.fill"
     }
 
     var compactTrailingText: String {
-        remainingTaskCount == 0 ? "Done" : "\(min(remainingTaskCount, 9))"
-    }
-
-    var summaryBadgeText: String {
-        remainingTaskCount == 0 ? "Done" : "\(remainingTaskCount) left"
-    }
-
-    var statusSummary: String {
-        remainingTaskCount == 0 ? "All caught up" : "\(remainingTaskCount) tasks left"
+        isCaughtUp ? "Done" : "\(min(remainingTaskCount, 9))"
     }
 }
 
 @available(iOS 16.1, *)
 private let liveActivityPreviewAttributes = ThingStructCurrentBlockActivityAttributes(
-    dateISO: "2026-03-22",
+    dateISO: "2026-08-12",
     currentBlockID: UUID().uuidString
 )
 
@@ -358,28 +268,26 @@ private let liveActivityPreviewAttributes = ThingStructCurrentBlockActivityAttri
 private extension ThingStructCurrentBlockActivityAttributes.ContentState {
     static func preview(
         title: String,
-        timeRangeText: String,
         remainingTaskCount: Int,
         displayNote: String?,
-        actionableTaskTitle: String?,
+        taskTitles: [String],
         displaySourceBlockTitle: String?,
         statusMessage: String?
     ) -> Self {
-        // 预览数据和正式 activity 使用同一个 ContentState 结构，
-        // 这能让预览更接近真实运行效果。
-        let taskBlockID = UUID().uuidString
-        let taskID = UUID().uuidString
-
-        return ThingStructCurrentBlockActivityAttributes.ContentState(
+        ThingStructCurrentBlockActivityAttributes.ContentState(
             title: title,
-            timeRangeText: timeRangeText,
+            timeRangeText: "",
             remainingTaskCount: remainingTaskCount,
             tapURL: ThingStructSystemRoute.now(source: .liveActivity).url?.absoluteString ?? "thingstruct://now",
             displayNote: displayNote,
-            actionableTaskTitle: actionableTaskTitle,
-            actionableTaskDateISO: actionableTaskTitle == nil ? nil : "2026-03-22",
-            actionableTaskBlockID: actionableTaskTitle == nil ? nil : taskBlockID,
-            actionableTaskID: actionableTaskTitle == nil ? nil : taskID,
+            actionableTasks: taskTitles.map { title in
+                ThingStructCurrentBlockActivityAttributes.ActionItem(
+                    dateISO: "2026-08-12",
+                    blockID: UUID().uuidString,
+                    taskID: UUID().uuidString,
+                    title: title
+                )
+            },
             displaySourceBlockTitle: displaySourceBlockTitle,
             statusMessage: statusMessage
         )
@@ -387,57 +295,39 @@ private extension ThingStructCurrentBlockActivityAttributes.ContentState {
 
     static let previewTopLayer = preview(
         title: "Focus Sprint",
-        timeRangeText: "09:00 - 11:00",
         remainingTaskCount: 2,
-        displayNote: "Protect this block for deep work and keep distractions outside the sprint.",
-        actionableTaskTitle: "Ship system surfaces",
+        displayNote: "Keep the review moving while decisions are fresh.",
+        taskTitles: ["Ship surfaces", "Review states"],
         displaySourceBlockTitle: nil,
         statusMessage: nil
     )
 
     static let previewFallbackLayer = preview(
         title: "Launch Window",
-        timeRangeText: "10:00 - 12:00",
         remainingTaskCount: 3,
-        displayNote: "Base layer still owns the next meaningful work after the upper layer wrapped.",
-        actionableTaskTitle: "Review progress",
+        displayNote: "Use the remaining space to protect launch quality and handoff clarity.",
+        taskTitles: ["Review progress", "Send launch notes"],
         displaySourceBlockTitle: "Afternoon",
         statusMessage: nil
     )
 
     static let previewCaughtUp = preview(
-        title: "AM",
-        timeRangeText: "10:00 - 23:00",
+        title: "Morning",
         remainingTaskCount: 0,
         displayNote: nil,
-        actionableTaskTitle: nil,
+        taskTitles: [],
         displaySourceBlockTitle: nil,
         statusMessage: "No incomplete tasks in this chain."
     )
-
-    static let previewLongCopy = preview(
-        title: "Deep Focus Sprint For System Surface Polish",
-        timeRangeText: "09:00 - 11:00",
-        remainingTaskCount: 2,
-        displayNote: "Keep the copy concise enough for Lock Screen, but still clear about why this work matters right now.",
-        actionableTaskTitle: "Ship the lock screen layout without clipping the last line",
-        displaySourceBlockTitle: nil,
-        statusMessage: nil
-    )
 }
 
-// 这些预览覆盖了几类关键状态：
-// - 顶层 block 有可完成任务
-// - 任务来源回退到下层/上层块
-// - 全部完成
-// - 长文本挤压
-#Preview("Live Activity Top Layer", as: .content, using: liveActivityPreviewAttributes) {
+#Preview("Live Activity Active", as: .content, using: liveActivityPreviewAttributes) {
     ThingStructCurrentBlockLiveActivity()
 } contentStates: {
     .previewTopLayer
 }
 
-#Preview("Live Activity Fallback Layer", as: .content, using: liveActivityPreviewAttributes) {
+#Preview("Live Activity Fallback", as: .content, using: liveActivityPreviewAttributes) {
     ThingStructCurrentBlockLiveActivity()
 } contentStates: {
     .previewFallbackLayer
@@ -449,12 +339,6 @@ private extension ThingStructCurrentBlockActivityAttributes.ContentState {
     .previewCaughtUp
 }
 
-#Preview("Live Activity Long Copy", as: .content, using: liveActivityPreviewAttributes) {
-    ThingStructCurrentBlockLiveActivity()
-} contentStates: {
-    .previewLongCopy
-}
-
 #Preview("Dynamic Island Expanded", as: .dynamicIsland(.expanded), using: liveActivityPreviewAttributes) {
     ThingStructCurrentBlockLiveActivity()
 } contentStates: {
@@ -464,11 +348,11 @@ private extension ThingStructCurrentBlockActivityAttributes.ContentState {
 #Preview("Dynamic Island Compact", as: .dynamicIsland(.compact), using: liveActivityPreviewAttributes) {
     ThingStructCurrentBlockLiveActivity()
 } contentStates: {
-    .previewFallbackLayer
+    .previewTopLayer
 }
 
 #Preview("Dynamic Island Minimal", as: .dynamicIsland(.minimal), using: liveActivityPreviewAttributes) {
     ThingStructCurrentBlockLiveActivity()
 } contentStates: {
-    .previewCaughtUp
+    .previewTopLayer
 }

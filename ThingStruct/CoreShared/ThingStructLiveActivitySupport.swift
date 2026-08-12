@@ -7,16 +7,24 @@ import Foundation
 // 这里和普通 SwiftUI View State 不同，它更像一个跨进程展示载荷。
 @available(iOS 16.1, *)
 struct ThingStructCurrentBlockActivityAttributes: ActivityAttributes {
+    struct ActionItem: Codable, Hashable, Identifiable {
+        var dateISO: String
+        var blockID: String
+        var taskID: String
+        var title: String
+
+        var id: String {
+            taskID
+        }
+    }
+
     public struct ContentState: Codable, Hashable {
         var title: String
         var timeRangeText: String
         var remainingTaskCount: Int
         var tapURL: String
         var displayNote: String?
-        var actionableTaskTitle: String?
-        var actionableTaskDateISO: String?
-        var actionableTaskBlockID: String?
-        var actionableTaskID: String?
+        var actionableTasks: [ActionItem]
         var displaySourceBlockTitle: String?
         var statusMessage: String?
     }
@@ -119,10 +127,14 @@ enum ThingStructCurrentBlockLiveActivityController {
                 remainingTaskCount: snapshot.remainingTaskCount,
                 tapURL: tapURL.absoluteString,
                 displayNote: snapshot.displayNote,
-                actionableTaskTitle: snapshot.displayTask?.title,
-                actionableTaskDateISO: snapshot.displayTask?.date.description,
-                actionableTaskBlockID: snapshot.displayTask?.blockID.uuidString,
-                actionableTaskID: snapshot.displayTask?.taskID.uuidString,
+                actionableTasks: snapshot.displayTasks.map { task in
+                    ThingStructCurrentBlockActivityAttributes.ActionItem(
+                        dateISO: task.date.description,
+                        blockID: task.blockID.uuidString,
+                        taskID: task.taskID.uuidString,
+                        title: task.title
+                    )
+                },
                 displaySourceBlockTitle: snapshot.displaySourceBlockTitle,
                 statusMessage: snapshot.statusMessage
             ),

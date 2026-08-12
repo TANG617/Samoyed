@@ -160,6 +160,7 @@ public enum SampleDataFactory {
         let morning = TimeBlock(
             layerIndex: 0,
             title: "Morning",
+            note: "Start gently and protect the first hour.",
             tasks: [TaskItem(title: "Plan the day"), TaskItem(title: "Clear inbox", order: 1)],
             timing: .absolute(startMinuteOfDay: 420, requestedEndMinuteOfDay: 720)
         )
@@ -186,6 +187,9 @@ public enum SampleDataFactory {
             parentBlockID: morning.id,
             layerIndex: 1,
             title: variant == 1 ? "Admin" : "Focus Work",
+            note: variant == 1
+                ? "Keep the operational work contained."
+                : "Keep notifications off until the review is done.",
             tasks: [
                 TaskItem(title: variant == 1 ? "Handle admin" : "Deep work"),
                 TaskItem(title: "Reply to messages", order: 1, isCompleted: variant == 2)

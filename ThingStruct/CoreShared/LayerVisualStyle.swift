@@ -35,15 +35,15 @@ enum AppTintPreset: String, CaseIterable, Identifiable, Codable, Sendable {
     var subtitle: String {
         switch self {
         case .ocean:
-            return "Keeps the current cool-blue feel."
+            return "Cool blue depth curve."
         case .lagoon:
             return "A crisp teal with calm depth."
         case .meadow:
-            return "Fresh green with softer energy."
+            return "Fresh green, softer energy."
         case .amber:
-            return "Warm gold with brighter emphasis."
+            return "Warm gold, brighter emphasis."
         case .coral:
-            return "A warm red-orange with extra punch."
+            return "Warm coral with extra punch."
         }
     }
 

@@ -205,7 +205,7 @@ final class ThingStructStore {
     }
 
     func showTemplates() {
-        openLibrary()
+        openLibrary(destination: .routines)
     }
 
     func requiresTemplateSelection(
@@ -355,7 +355,6 @@ final class ThingStructStore {
     var isReady: Bool {
         bootstrapState == .ready
     }
-
     func persistedBlock(on date: LocalDay, blockID: UUID) -> TimeBlock? {
         // “persistedBlock” 和 `BlockDetailModel` 的区别：
         // - 前者是 document 里真实存储的业务对象
@@ -363,29 +362,231 @@ final class ThingStructStore {
         document.dayPlan(for: date)?.blocks.first(where: { $0.id == blockID })
     }
 
-    func exportTodayBlocksYAML(today: LocalDay = .today()) throws -> String {
-        try ThingStructPortableDayBlocks.exportYAML(from: materializedDayPlan(on: today))
-    }
-
-    func previewTodayBlocksImport(_ yaml: String) throws -> PortableDayBlocksSummary {
+    func previewRoutineConfigImport(_ yaml: String) throws -> PortableDayBlocksSummary {
         try ThingStructPortableDayBlocks.summary(fromYAML: yaml)
     }
 
-    func importTodayBlocksYAML(_ yaml: String, today: LocalDay = .today()) throws {
-        // 导入不是“增量 merge”，而是按项目定义转换成新的 DayPlan，然后提交。
-        let existingPlan = try materializedDayPlan(on: today)
-        let importedPlan = try ThingStructPortableDayBlocks.dayPlanForImport(
-            fromYAML: yaml,
-            on: today,
-            dayPlanID: existingPlan.id,
-            lastGeneratedAt: existingPlan.lastGeneratedAt
-        )
-
-        if selectedDate == today {
-            selectedBlockID = nil
+    @discardableResult
+    func importRoutineConfigYAML(
+        _ yaml: String,
+        title rawTitle: String,
+        replacingRoutineID: UUID? = nil
+    ) throws -> UUID {
+        let title = rawTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty else {
+            throw ThingStructCoreError.emptyTemplateTitle
         }
 
-        try commit(dayPlan: importedPlan)
+        let importedPlan = try ThingStructPortableDayBlocks.dayPlanForImport(
+            fromYAML: yaml,
+            on: LocalDay(year: 2001, month: 1, day: 1)
+        )
+        let existingRoutine = replacingRoutineID.flatMap(savedTemplate(id:))
+        let routine = SavedDayTemplate(
+            id: existingRoutine?.id ?? UUID(),
+            title: title,
+            sourceSuggestedTemplateID: existingRoutine?.sourceSuggestedTemplateID ?? UUID(),
+            blocks: blockTemplates(from: importedPlan.blocks),
+            createdAt: existingRoutine?.createdAt ?? .now,
+            updatedAt: .now
+        )
+
+        _ = try TemplateEngine.previewDayPlan(from: routine)
+        if let index = document.savedTemplates.firstIndex(where: { $0.id == replacingRoutineID }) {
+            document.savedTemplates[index] = routine
+        } else {
+            document.savedTemplates.append(routine)
+        }
+        try persistDocument()
+        return routine.id
+    }
+
+    func routineID(titled rawTitle: String) -> UUID? {
+        let title = rawTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        return document.savedTemplates.first {
+            $0.title.compare(title, options: [.caseInsensitive, .diacriticInsensitive]) == .orderedSame
+        }?.id
+    }
+
+    @discardableResult
+    func createRoutine(
+        title rawTitle: String,
+        blockTitle rawBlockTitle: String,
+        note rawNote: String,
+        startMinuteOfDay: Int,
+        endMinuteOfDay: Int
+    ) throws -> UUID {
+        let title = rawTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty else {
+            throw ThingStructCoreError.emptyTemplateTitle
+        }
+
+        let blockID = UUID()
+        guard startMinuteOfDay < endMinuteOfDay else {
+            throw ThingStructCoreError.invalidResolvedRange(
+                blockID: blockID,
+                start: startMinuteOfDay,
+                end: endMinuteOfDay
+            )
+        }
+
+        let blockTitle = rawBlockTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        let note = rawNote.trimmingCharacters(in: .whitespacesAndNewlines)
+        let routine = SavedDayTemplate(
+            title: title,
+            sourceSuggestedTemplateID: UUID(),
+            blocks: [
+                BlockTemplate(
+                    id: blockID,
+                    layerIndex: 0,
+                    title: blockTitle.isEmpty ? title : blockTitle,
+                    note: note.isEmpty ? nil : note,
+                    timing: .absolute(
+                        startMinuteOfDay: startMinuteOfDay,
+                        requestedEndMinuteOfDay: endMinuteOfDay
+                    )
+                )
+            ]
+        )
+
+        _ = try TemplateEngine.previewDayPlan(from: routine)
+        document.savedTemplates.append(routine)
+        document.savedTemplates.sort { $0.updatedAt > $1.updatedAt }
+        try persistDocument()
+        return routine.id
+    }
+
+    func updateRoutine(
+        id: UUID,
+        title rawTitle: String,
+        blockTitle rawBlockTitle: String,
+        note rawNote: String,
+        startMinuteOfDay: Int,
+        endMinuteOfDay: Int
+    ) throws {
+        guard let routineIndex = document.savedTemplates.firstIndex(where: { $0.id == id }) else {
+            throw ThingStructCoreError.missingSavedTemplate(id)
+        }
+
+        let title = rawTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty else {
+            throw ThingStructCoreError.emptyTemplateTitle
+        }
+
+        var routine = document.savedTemplates[routineIndex]
+        let rootIndex = routine.blocks.firstIndex {
+            $0.layerIndex == 0 && $0.parentTemplateBlockID == nil
+        }
+        let validationID = rootIndex.map { routine.blocks[$0].id } ?? UUID()
+        guard startMinuteOfDay < endMinuteOfDay else {
+            throw ThingStructCoreError.invalidResolvedRange(
+                blockID: validationID,
+                start: startMinuteOfDay,
+                end: endMinuteOfDay
+            )
+        }
+
+        let blockTitle = rawBlockTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        let note = rawNote.trimmingCharacters(in: .whitespacesAndNewlines)
+        let updatedBlock = BlockTemplate(
+            id: validationID,
+            layerIndex: 0,
+            title: blockTitle.isEmpty ? title : blockTitle,
+            note: note.isEmpty ? nil : note,
+            timing: .absolute(
+                startMinuteOfDay: startMinuteOfDay,
+                requestedEndMinuteOfDay: endMinuteOfDay
+            )
+        )
+
+        if let rootIndex {
+            routine.blocks[rootIndex].title = updatedBlock.title
+            routine.blocks[rootIndex].note = updatedBlock.note
+            routine.blocks[rootIndex].timing = updatedBlock.timing
+        } else {
+            routine.blocks.append(updatedBlock)
+        }
+        routine.title = title
+        routine.updatedAt = .now
+
+        _ = try TemplateEngine.previewDayPlan(from: routine)
+        document.savedTemplates[routineIndex] = routine
+        try persistDocument()
+    }
+
+    func deleteRoutine(id: UUID) throws {
+        guard document.savedTemplates.contains(where: { $0.id == id }) else {
+            throw ThingStructCoreError.missingSavedTemplate(id)
+        }
+
+        document.savedTemplates.removeAll { $0.id == id }
+        document.weekdayRules.removeAll { $0.savedTemplateID == id }
+        document.overrides.removeAll { $0.savedTemplateID == id }
+        document.daySelections.removeAll { $0.selectedTemplateID == id }
+        try persistDocument()
+    }
+
+    func exportRoutineConfigYAML(templateID: UUID) throws -> String {
+        guard let routine = savedTemplate(id: templateID) else {
+            throw ThingStructCoreError.missingSavedTemplate(templateID)
+        }
+
+        let previewPlan = try TemplateEngine.previewDayPlan(from: routine)
+        return try ThingStructPortableDayBlocks.exportYAML(from: previewPlan)
+    }
+
+    private func blockTemplates(from blocks: [TimeBlock]) -> [BlockTemplate] {
+        blocks
+            .filter { !$0.isCancelled && !$0.isBlankBaseBlock }
+            .sorted(by: routineImportSort)
+            .map { block in
+                BlockTemplate(
+                    id: block.id,
+                    parentTemplateBlockID: block.parentBlockID,
+                    layerIndex: block.layerIndex,
+                    title: block.title,
+                    note: block.note,
+                    reminders: block.reminders,
+                    taskBlueprints: block.tasks
+                        .sorted {
+                            if $0.order != $1.order {
+                                return $0.order < $1.order
+                            }
+                            return $0.id.uuidString < $1.id.uuidString
+                        }
+                        .map { task in
+                            TaskBlueprint(
+                                id: task.id,
+                                title: task.title,
+                                order: task.order
+                            )
+                        },
+                    timing: block.timing
+                )
+            }
+    }
+
+    private func routineImportSort(_ lhs: TimeBlock, _ rhs: TimeBlock) -> Bool {
+        if lhs.layerIndex != rhs.layerIndex {
+            return lhs.layerIndex < rhs.layerIndex
+        }
+
+        let lhsStart = lhs.resolvedStartMinuteOfDay ?? timingSortStart(lhs.timing)
+        let rhsStart = rhs.resolvedStartMinuteOfDay ?? timingSortStart(rhs.timing)
+        if lhsStart != rhsStart {
+            return lhsStart < rhsStart
+        }
+
+        return lhs.id.uuidString < rhs.id.uuidString
+    }
+
+    private func timingSortStart(_ timing: TimeBlockTiming) -> Int {
+        switch timing {
+        case let .absolute(startMinuteOfDay, _):
+            return startMinuteOfDay
+        case let .relative(startOffsetMinutes, _):
+            return startOffsetMinutes
+        }
     }
 
     // MARK: Commands
@@ -428,6 +629,22 @@ final class ThingStructStore {
             )
             throw error
         }
+    }
+
+    func saveEditedTemplate(
+        _ templateID: UUID,
+        title: String,
+        blocks: [BlockTemplate],
+        assignedWeekdays: Set<Weekday>
+    ) throws {
+        document = try TemplateEngine.updateSavedTemplate(
+            templateID,
+            title: title,
+            blocks: blocks,
+            assignedWeekdays: assignedWeekdays,
+            in: document
+        )
+        try persistDocument()
     }
 
     func saveSimpleDayType(_ draft: SimpleDayTypeDraft) throws {
@@ -577,128 +794,6 @@ final class ThingStructStore {
         }
     }
 
-    func saveBlockDraft(_ draft: BlockDraft, for date: LocalDay) throws -> UUID {
-        // 这是编辑器保存的核心入口。
-        // `BlockDraft` 是 UI 编辑态，真正落库之前要转回 `TimeBlock`。
-        ensureMaterialized(for: date)
-        guard var plan = document.dayPlan(for: date) else {
-            throw ThingStructCoreError.missingDayPlanForDate(date)
-        }
-
-        let savedBlockID: UUID
-
-        switch draft.mode {
-        case .createBase:
-            // 创建底层 block：没有 parent。
-            let block = draft.makeBlock(dayPlanID: plan.id)
-            savedBlockID = block.id
-            plan.blocks.append(block)
-
-        case let .createOverlay(parentBlockID, layerIndex):
-            // 创建 overlay：需要挂到父 block 下，并设置正确层级。
-            var block = draft.makeBlock(dayPlanID: plan.id)
-            block.parentBlockID = parentBlockID
-            block.layerIndex = layerIndex
-            savedBlockID = block.id
-            plan.blocks.append(block)
-
-        case let .edit(blockID):
-            // 编辑时保留 identity（id/parent/layer），只替换可编辑内容。
-            guard let blockIndex = plan.blocks.firstIndex(where: { $0.id == blockID }) else {
-                throw ThingStructCoreError.missingBlock(blockID)
-            }
-
-            let existing = plan.blocks[blockIndex]
-            guard !existing.isBlankBaseBlock else {
-                throw ThingStructCoreError.missingBlock(existing.id)
-            }
-
-            var updated = draft.makeBlock(dayPlanID: plan.id)
-            updated.id = existing.id
-            updated.parentBlockID = existing.parentBlockID
-            updated.layerIndex = existing.layerIndex
-            updated.isCancelled = existing.isCancelled
-            plan.blocks[blockIndex] = updated
-            savedBlockID = existing.id
-        }
-
-        // 一旦用户显式保存，就标记为“有用户编辑”，后续 regeneration 会受影响。
-        plan.hasUserEdits = true
-        let resolved = try DayPlanEngine.resolved(plan)
-        upsert(dayPlan: resolved)
-        try persistDocument()
-        return savedBlockID
-    }
-
-    func cancelBlock(on date: LocalDay, blockID: UUID) {
-        do {
-            // 注意这个 cancel 不是简单 bool toggle，而是一个结构重写操作。
-            var collapsed = try DayPlanEngine.cancelBlock(blockID, in: materializedDayPlan(on: date))
-            collapsed.hasUserEdits = true
-            if selectedBlockID == blockID {
-                selectedBlockID = nil
-            }
-            try commit(dayPlan: collapsed)
-        } catch {
-            presentError(error)
-        }
-    }
-
-    func resizeBounds(on date: LocalDay, blockID: UUID) -> BlockResizeBounds? {
-        // UI 手势层先问“合法区间”再拖动，比拖完了再报错更友好。
-        ensureMaterialized(for: date)
-        guard let plan = document.dayPlan(for: date) else {
-            return nil
-        }
-
-        return try? DayPlanEngine.resizeBounds(for: blockID, in: plan)
-    }
-
-    func resizeBlockEnd(on date: LocalDay, blockID: UUID, proposedEndMinuteOfDay: Int) {
-        do {
-            // 视图层只提供“用户拖到了哪个分钟”，真正是否合法由 engine 判断。
-            var resized = try DayPlanEngine.resizeBlockEnd(
-                blockID,
-                in: materializedDayPlan(on: date),
-                proposedEndMinuteOfDay: proposedEndMinuteOfDay
-            )
-            resized.hasUserEdits = true
-            try commit(dayPlan: resized)
-        } catch {
-            presentError(error)
-        }
-    }
-
-    func resizeBlockStart(on date: LocalDay, blockID: UUID, proposedStartMinuteOfDay: Int) {
-        do {
-            var resized = try DayPlanEngine.resizeBlockStart(
-                blockID,
-                in: materializedDayPlan(on: date),
-                proposedStartMinuteOfDay: proposedStartMinuteOfDay
-            )
-            resized.hasUserEdits = true
-            try commit(dayPlan: resized)
-        } catch {
-            presentError(error)
-        }
-    }
-
-    func saveSuggestedTemplate(from sourceDate: LocalDay, title: String) {
-        do {
-            // 候选模板不是长期持久化对象；用户保存后才会转成 `SavedDayTemplate`。
-            let suggested = try TemplateEngine.suggestedTemplates(
-                referenceDay: LocalDay.today(),
-                from: document.dayPlans
-            )
-            guard let template = suggested.first(where: { $0.sourceDate == sourceDate }) else { return }
-            let saved = TemplateEngine.saveSuggestedTemplate(template, title: title)
-            document.savedTemplates.append(saved)
-            try persistDocument()
-        } catch {
-            presentError(error)
-        }
-    }
-
     func chooseTemplate(
         for date: LocalDay,
         templateID: UUID?,
@@ -730,123 +825,6 @@ final class ThingStructStore {
 
             try persistDocument()
             return .applied
-        }
-    }
-
-    func assignWeekday(_ weekday: Weekday, to templateID: UUID?) {
-        // 这里采用“先删旧值，再写新值”的方式维持 weekday -> template 的 1:1 映射。
-        document.weekdayRules.removeAll { $0.weekday == weekday }
-        if let templateID {
-            document.weekdayRules.append(.init(weekday: weekday, savedTemplateID: templateID))
-        }
-
-        do {
-            try persistDocument()
-        } catch {
-            presentError(error)
-        }
-    }
-
-    func setOverride(templateID: UUID?, for date: LocalDay) {
-        // override 的优先级高于 weekday 规则，所以单独存一张表。
-        document.overrides.removeAll { $0.date == date }
-        if let templateID {
-            document.overrides.append(.init(date: date, savedTemplateID: templateID))
-        }
-
-        do {
-            try persistDocument()
-        } catch {
-            presentError(error)
-        }
-    }
-
-    func setTomorrowOverride(templateID: UUID?) {
-        setOverride(templateID: templateID, for: LocalDay.today().adding(days: 1))
-    }
-
-    func assignedWeekdays(for templateID: UUID) -> Set<Weekday> {
-        Set(
-            document.weekdayRules
-                .filter { $0.savedTemplateID == templateID }
-                .map(\.weekday)
-        )
-    }
-
-    func occupiedWeekdays(excluding templateID: UUID) -> Set<Weekday> {
-        Set(
-            document.weekdayRules
-                .filter { $0.savedTemplateID != templateID }
-                .map(\.weekday)
-        )
-    }
-
-    func saveEditedTemplate(
-        _ templateID: UUID,
-        title: String,
-        blocks: [BlockTemplate],
-        assignedWeekdays: Set<Weekday>
-    ) throws {
-        // 模板编辑逻辑继续委托给 TemplateEngine，Store 只负责接 UI 输入与持久化。
-        document = try TemplateEngine.updateSavedTemplate(
-            templateID,
-            title: title,
-            blocks: blocks,
-            assignedWeekdays: assignedWeekdays,
-            in: document
-        )
-        try persistDocument()
-    }
-
-    func deleteSavedTemplate(_ templateID: UUID) {
-        document = TemplateEngine.deleteSavedTemplate(templateID, from: document)
-
-        do {
-            try persistDocument()
-        } catch {
-            presentError(error)
-        }
-    }
-
-    func regenerateFutureDayPlan(for date: LocalDay) {
-        do {
-            // regenerate 只允许未来日期，且会受 `hasUserEdits` / 完成任务等条件限制。
-            let regenerated = try TemplateEngine.regenerateFutureDayPlan(
-                for: date,
-                today: LocalDay.today(),
-                existingDayPlans: document.dayPlans,
-                savedTemplates: document.savedTemplates,
-                weekdayRules: document.weekdayRules,
-                overrides: document.overrides,
-                daySelections: document.daySelections
-            )
-            if selectedDate == date {
-                selectedBlockID = nil
-            }
-            try commit(dayPlan: regenerated)
-        } catch {
-            presentError(error)
-        }
-    }
-
-    func rebuildDayPlan(for date: LocalDay, generatedAt: Date = .now) {
-        do {
-            // rebuild 比 regenerate 更激进，允许用当前模板体系重建指定日期的 plan。
-            let rebuilt = try TemplateEngine.rebuildDayPlan(
-                for: date,
-                existingDayPlans: document.dayPlans,
-                savedTemplates: document.savedTemplates,
-                weekdayRules: document.weekdayRules,
-                overrides: document.overrides,
-                daySelections: document.daySelections,
-                generatedAt: generatedAt
-            )
-            if selectedDate == date {
-                selectedBlockID = nil
-            }
-            try commit(dayPlan: rebuilt)
-        } catch {
-            presentError(error)
         }
     }
 

@@ -1,260 +1,301 @@
 import SwiftUI
 
 enum LibraryDestination: Hashable {
-    case templates
-    case importExport
-    case settings
-}
-
-private enum LibrarySheetDestination: Identifiable {
-    case simple(SimpleDayTypeDraft)
-    case advanced(UUID)
-    case validationExport(URL)
-
-    var id: String {
-        switch self {
-        case let .simple(draft): "simple-\(draft.templateID?.uuidString ?? "new")"
-        case let .advanced(id): "advanced-\(id.uuidString)"
-        case let .validationExport(url): "export-\(url.path())"
-        }
-    }
+    case routines
+    case appearance
+    case routineFiles
 }
 
 struct LibraryRootView: View {
     @Environment(ThingStructStore.self) private var store
-    @State private var sheet: LibrarySheetDestination?
-    @State private var templateToDelete: SavedDayTemplate?
-    @State private var showingClearValidationConfirmation = false
 
     var body: some View {
-        NavigationStack {
-            List {
-                Section("Day Types") {
-                    if store.savedTemplates.isEmpty {
-                        ContentUnavailableView(
-                            "No Day Types",
-                            systemImage: "square.stack.3d.up.slash",
-                            description: Text("Create one reusable shape for a kind of day.")
-                        )
-                        Button {
-                            sheet = .simple(.newDayType)
-                        } label: {
-                            Label("Create Day Type", systemImage: "plus")
-                        }
-                    } else {
-                        ForEach(sortedTemplates) { template in
-                            Button {
-                                edit(template)
-                            } label: {
-                                DayTypeRow(
-                                    template: template,
-                                    weekdays: store.assignedWeekdays(for: template.id)
-                                )
-                            }
-                            .buttonStyle(.plain)
-                            .swipeActions(edge: .trailing) {
-                                Button("Delete", role: .destructive) {
-                                    templateToDelete = template
-                                }
-                            }
-                        }
-                    }
-                }
+        @Bindable var store = store
 
-                Section("Usual Week") {
-                    ForEach(Weekday.mondayFirst) { weekday in
-                        Picker(
-                            weekday.fullName,
-                            selection: Binding(
-                                get: { store.assignedTemplateID(for: weekday) },
-                                set: { store.assignWeekday(weekday, to: $0) }
-                            )
-                        ) {
-                            Text("None").tag(UUID?.none)
-                            ForEach(sortedTemplates) { template in
-                                Text(template.title).tag(Optional(template.id))
-                            }
-                        }
-                        .pickerStyle(.menu)
+        NavigationStack(path: $store.libraryNavigationPath) {
+            Group {
+                if !store.isLoaded {
+                    ScreenLoadingView(
+                        title: "Loading Routines",
+                        systemImage: "square.stack.3d.up",
+                        description: "Preparing today’s routine choice and your local routine library."
+                    )
+                } else {
+                    RootScreenContainer(
+                        isLoaded: true,
+                        loadingTitle: "Loading Routines",
+                        loadingSystemImage: "square.stack.3d.up",
+                        loadingDescription: "Preparing today’s routine choice and your local routine library.",
+                        errorTitle: "Unable to Load Library",
+                        retry: store.reload,
+                        load: { try store.templatesScreenModel() }
+                    ) { model in
+                        LibraryContent(model: model)
                     }
                 }
             }
-            .listStyle(.insetGrouped)
             .navigationTitle("Library")
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        sheet = .simple(.newDayType)
+                    NavigationLink {
+                        RoutineEditorView(mode: .create)
                     } label: {
-                        Label("New Day Type", systemImage: "plus")
-                    }
-                }
-
-                if ValidationRuntime.isEnabled {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Menu {
-                            Button("Export Validation Log", systemImage: "square.and.arrow.up") {
-                                Task {
-                                    if let url = await store.validationExportURL() {
-                                        sheet = .validationExport(url)
-                                    } else {
-                                        store.presentErrorMessage("No validation events have been recorded yet.")
-                                    }
-                                }
-                            }
-                            Button("Clear Validation Log", systemImage: "trash", role: .destructive) {
-                                showingClearValidationConfirmation = true
-                            }
-                        } label: {
-                            Label("Validation", systemImage: "ellipsis.circle")
-                        }
+                        Label("New Routine", systemImage: "plus")
                     }
                 }
             }
-        }
-        .sheet(item: $sheet) { destination in
-            switch destination {
-            case let .simple(draft):
-                SimpleDayTypeEditorSheet(draft: draft)
-                    .environment(store)
-
-            case let .advanced(templateID):
-                if let template = store.savedTemplate(id: templateID) {
-                    TemplateEditorSheet(
-                        template: template,
-                        assignedWeekdays: store.assignedWeekdays(for: templateID),
-                        occupiedWeekdays: store.occupiedWeekdays(excluding: templateID),
-                        onSave: { title, blocks, weekdays in
-                            try store.saveEditedTemplate(
-                                templateID,
-                                title: title,
-                                blocks: blocks,
-                                assignedWeekdays: weekdays
-                            )
-                        },
-                        onDelete: { store.deleteSavedTemplate(templateID) }
-                    )
+            .navigationDestination(for: LibraryDestination.self) { destination in
+                switch destination {
+                case .routines:
+                    RoutinesRootView()
+                case .appearance:
+                    LibraryAppearanceView()
+                case .routineFiles:
+                    LibraryImportExportView()
                 }
-
-            case let .validationExport(url):
-                NavigationStack {
-                    VStack(spacing: 18) {
-                        Image(systemName: "doc.text")
-                            .font(.largeTitle)
-                            .foregroundStyle(.tint)
-                        Text("Validation Log")
-                            .font(.title2.bold())
-                        Text("This JSONL file contains anonymous product events only.")
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
-                        ShareLink(item: url) {
-                            Label("Share Log", systemImage: "square.and.arrow.up")
-                        }
-                        .buttonStyle(.borderedProminent)
-                    }
-                    .padding(24)
-                    .navigationTitle("Export")
-                    .navigationBarTitleDisplayMode(.inline)
-                }
-                .presentationDetents([.medium])
             }
-        }
-        .confirmationDialog(
-            "Delete this day type?",
-            isPresented: Binding(
-                get: { templateToDelete != nil },
-                set: { if !$0 { templateToDelete = nil } }
-            ),
-            titleVisibility: .visible
-        ) {
-            Button("Delete Day Type", role: .destructive) {
-                if let templateToDelete {
-                    store.deleteSavedTemplate(templateToDelete.id)
-                    store.recordValidationEvent(
-                        .dayTypeEditCompleted,
-                        outcome: "deleted",
-                        variant: templateToDelete.isSimpleDayType ? "simple" : "advanced"
-                    )
-                }
-                templateToDelete = nil
-            }
-            Button("Cancel", role: .cancel) { templateToDelete = nil }
-        } message: {
-            Text("Existing days remain unchanged. Usual-week assignments for this day type will be removed.")
-        }
-        .confirmationDialog(
-            "Clear the validation log?",
-            isPresented: $showingClearValidationConfirmation,
-            titleVisibility: .visible
-        ) {
-            Button("Clear Log", role: .destructive) {
-                Task { await store.clearValidationLog() }
-            }
-            Button("Cancel", role: .cancel) {}
-        }
-    }
-
-    private var sortedTemplates: [SavedDayTemplate] {
-        store.savedTemplates.sorted {
-            $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
-        }
-    }
-
-    private func edit(_ template: SavedDayTemplate) {
-        if let draft = SimpleDayTypeDraft(
-            template: template,
-            assignedWeekdays: store.assignedWeekdays(for: template.id)
-        ) {
-            sheet = .simple(draft)
-        } else {
-            sheet = .advanced(template.id)
         }
     }
 }
 
-private struct DayTypeRow: View {
-    let template: SavedDayTemplate
-    let weekdays: Set<Weekday>
+private struct LibraryContent: View {
+    @Environment(ThingStructStore.self) private var store
+
+    let model: TemplatesScreenModel
+
+    var body: some View {
+        List {
+            Section {
+                Text("Choose, preview, and reuse routines.")
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 4, trailing: 0))
+            }
+
+            if model.savedTemplates.isEmpty {
+                Section {
+                    ContentUnavailableView {
+                        Label("No Routines", systemImage: "square.and.arrow.down")
+                    } description: {
+                        Text("Create a reusable routine or import a Routine Config File.")
+                    } actions: {
+                        Button {
+                            store.libraryNavigationPath.append(.routineFiles)
+                        } label: {
+                            Label("Import Routine Config File", systemImage: "square.and.arrow.down")
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 48)
+                }
+                .listRowBackground(Color.clear)
+            } else {
+                todaySection
+                routinesSection
+                toolsSection
+            }
+        }
+        .listStyle(.insetGrouped)
+    }
+
+    @ViewBuilder
+    private var todaySection: some View {
+        Section("Today") {
+            if let current = model.todayChooser.currentSelection {
+                NavigationLink {
+                    RoutineDetailView(routineID: current.id)
+                } label: {
+                    LibraryRoutineRow(
+                        routine: current,
+                        subtitle: "Running",
+                        showsSelection: true
+                    )
+                }
+            } else {
+                NavigationLink(value: LibraryDestination.routines) {
+                    Label("Choose Today’s Routine", systemImage: "calendar.badge.exclamationmark")
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var routinesSection: some View {
+        Section("Routines") {
+            ForEach(model.savedTemplates.filter { !$0.isCurrentForToday }.prefix(3)) { routine in
+                NavigationLink {
+                    RoutineDetailView(routineID: routine.id)
+                } label: {
+                    LibraryRoutineRow(
+                        routine: routine,
+                        subtitle: routine.timeRangeText ?? "Reusable routine",
+                        showsSelection: false
+                    )
+                }
+            }
+
+            NavigationLink(value: LibraryDestination.routines) {
+                Label("All Routines", systemImage: "square.stack.3d.up")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var toolsSection: some View {
+        Section("Library Tools") {
+            NavigationLink(value: LibraryDestination.appearance) {
+                Label("Appearance", systemImage: "paintpalette")
+            }
+
+            NavigationLink(value: LibraryDestination.routineFiles) {
+                Label("Routine Files", systemImage: "arrow.up.arrow.down")
+            }
+        }
+    }
+}
+
+private struct LibraryRoutineRow: View {
+    let routine: TemplateCandidateSummary
+    let subtitle: String
+    let showsSelection: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "square.stack.3d.up")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.tint)
+                .frame(width: 26)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(routine.title)
+                    .font(.body)
+                Text(subtitle)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 8)
+
+            if showsSelection {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.tint)
+                    .accessibilityLabel("Selected for today")
+            }
+        }
+    }
+}
+
+struct LibraryAppearanceView: View {
+    @Environment(ThingStructStore.self) private var store
+
+    var body: some View {
+        List {
+            Section("Tint Presets") {
+                ForEach(AppTintPreset.allCases) { preset in
+                    Button {
+                        store.applyTintPreset(preset)
+                    } label: {
+                        TintPresetRow(
+                            preset: preset,
+                            isSelected: store.tintPreset == preset
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(store.tintPreset == preset ? [.isSelected] : [])
+                }
+            }
+
+            Section {
+                LabeledContent("Global Accent", value: store.tintPreset.title)
+                LabeledContent("Blank Blocks", value: "Neutral")
+            } header: {
+                Text("Behavior")
+            } footer: {
+                Text("The selected tint updates Now, Today, Library, widgets, and Live Activities while blank blocks remain neutral.")
+            }
+        }
+        .listStyle(.insetGrouped)
+        .navigationTitle("Appearance")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct TintPresetRow: View {
+    let preset: AppTintPreset
+    let isSelected: Bool
 
     var body: some View {
         HStack(spacing: 14) {
-            Image(systemName: template.isSimpleDayType ? "square.stack.3d.up" : "square.3.layers.3d")
-                .font(.title3)
-                .foregroundStyle(.tint)
-                .frame(width: 28)
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 8) {
-                    Text(template.title)
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(.primary)
-                    if !template.isSimpleDayType {
-                        Text("Advanced")
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                Text(summary)
-                    .font(.footnote)
+            TintPresetSwatch(preset: preset)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(preset.title)
+                    .font(.body)
+                    .foregroundStyle(.primary)
+
+                Text(preset.subtitle)
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            Spacer()
-            Image(systemName: "chevron.right")
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(.tertiary)
+
+            Spacer(minLength: 8)
+
+            if isSelected {
+                Image(systemName: "checkmark")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.primary)
+            }
         }
-        .frame(minHeight: 52)
+        .padding(.vertical, 4)
         .contentShape(Rectangle())
     }
+}
 
-    private var summary: String {
-        let orderedDays = Weekday.mondayFirst.filter(weekdays.contains).map(\.shortName)
-        let schedule = orderedDays.isEmpty ? "No usual days" : orderedDays.joined(separator: ", ")
-        let blockCount = template.blocks.filter { $0.layerIndex == 0 }.count
-        return "\(blockCount) \(blockCount == 1 ? "block" : "blocks") · \(schedule)"
+private struct TintPresetSwatch: View {
+    let preset: AppTintPreset
+
+    var body: some View {
+        ZStack(alignment: .bottomTrailing) {
+            ZStack(alignment: .leading) {
+                ForEach(Array((0 ..< 4).reversed()), id: \.self) { layer in
+                    let style = LayerVisualStyle.forBlock(
+                        layerIndex: layer,
+                        isBlank: false,
+                        preset: preset
+                    )
+
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(style.strongSurface)
+                        .frame(width: 30, height: 21)
+                        .offset(x: CGFloat(layer) * 7)
+                }
+            }
+            .frame(width: 55, height: 25, alignment: .leading)
+
+            Circle()
+                .fill(preset.tintColor)
+                .frame(width: 12, height: 12)
+                .overlay {
+                    Circle().stroke(Color(uiColor: .systemBackground), lineWidth: 1.5)
+                }
+        }
+        .frame(width: 62, height: 34)
+        .accessibilityHidden(true)
     }
 }
 
 #Preview("Library") {
     LibraryRootView()
         .environment(PreviewSupport.store(tab: .library))
+}
+
+#Preview("Appearance") {
+    NavigationStack {
+        LibraryAppearanceView()
+    }
+    .environment(PreviewSupport.store(tab: .library, tintPreset: .ocean))
 }

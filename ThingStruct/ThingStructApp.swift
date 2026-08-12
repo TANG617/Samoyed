@@ -303,8 +303,8 @@ enum ThingStructQuickActionManager {
             ),
             shortcutItem(
                 type: ThingStructSharedConfig.quickActionTemplates,
-                title: "Templates",
-                subtitle: "Open your saved templates",
+                title: "Routines",
+                subtitle: "Choose today’s routine",
                 systemImageName: "square.stack.3d.up",
                 route: .templates(source: .quickAction)
             )
@@ -410,11 +410,11 @@ enum ThingStructQuickActionManager {
     ContentView(store: PreviewSupport.store(tab: .library))
 }
 
-#Preview("Content - Templates in Library") {
+#Preview("Content - Routines in Library") {
     ContentView(
         store: PreviewSupport.store(
             tab: .library,
-            libraryNavigationPath: [.templates]
+            libraryNavigationPath: [.routines]
         )
     )
 }
@@ -434,12 +434,12 @@ enum ThingStructQuickActionManager {
         .environment(PreviewSupport.store(tab: .library))
 }
 
-#Preview("App Shell - Templates in Library") {
+#Preview("App Shell - Routines in Library") {
     AppShellView()
         .environment(
             PreviewSupport.store(
                 tab: .library,
-                libraryNavigationPath: [.templates]
+                libraryNavigationPath: [.routines]
             )
         )
 }

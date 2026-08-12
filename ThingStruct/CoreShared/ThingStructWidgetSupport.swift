@@ -51,6 +51,7 @@ struct ThingStructWidgetSnapshot: Equatable, Sendable {
     var requiresTemplateSelection: Bool
     var currentBlockTitle: String?
     var currentBlockTimeRangeText: String?
+    var currentBlockNote: String? = nil
     var blocks: [ThingStructWidgetBlockItem]
     var remainingTaskCount: Int
     var tasks: [ThingStructWidgetTaskItem]
@@ -65,6 +66,7 @@ struct ThingStructWidgetSnapshot: Equatable, Sendable {
             requiresTemplateSelection: false,
             currentBlockTitle: "Now",
             currentBlockTimeRangeText: "09:00 - 10:30",
+            currentBlockNote: "Finish the review while the decisions are fresh.",
             blocks: [
                 ThingStructWidgetBlockItem(
                     blockID: UUID().uuidString,
@@ -155,6 +157,9 @@ enum ThingStructWidgetSnapshotBuilder {
         }
         // Widget 更关注“当前块”，所以如果链上有 current 就优先找它。
         let currentBlock = blocks.first(where: \.isCurrent) ?? blocks.first
+        let currentBlockNote = currentBlock.flatMap { block in
+            now.noteSections.first(where: { $0.id.uuidString == block.blockID })?.note
+        }
         // 任务也会做一次优先级重排，让当前块的任务优先显示。
         let prioritizedSections = prioritizedTaskSections(from: now.taskSections)
         let tasks = prioritizedSections
@@ -180,6 +185,7 @@ enum ThingStructWidgetSnapshotBuilder {
             requiresTemplateSelection: false,
             currentBlockTitle: currentBlock?.title,
             currentBlockTimeRangeText: currentBlock?.timeRangeText,
+            currentBlockNote: currentBlockNote,
             blocks: blocks,
             remainingTaskCount: now.taskSections
                 .flatMap(\.tasks)
@@ -228,13 +234,10 @@ enum ThingStructWidgetSnapshotBuilder {
     private static func prioritizedTasks(
         from section: NowTaskSection
     ) -> [TaskItem] {
-        // 这里的排序规则值得注意：
-        // 当前实现会把已完成任务排在前面，因为排序条件写的是 `rhs.element.isCompleted`。
-        // 注释保留这个事实，方便以后你回看时理解 widget 展示顺序来自这里。
         section.tasks.enumerated()
             .sorted { lhs, rhs in
                 if lhs.element.isCompleted != rhs.element.isCompleted {
-                    return rhs.element.isCompleted
+                    return !lhs.element.isCompleted
                 }
                 return lhs.offset < rhs.offset
             }
@@ -297,10 +300,11 @@ extension ThingStructDocumentRepository {
                 requiresTemplateSelection: true,
                 currentBlockTitle: nil,
                 currentBlockTimeRangeText: nil,
+                currentBlockNote: nil,
                 blocks: [],
                 remainingTaskCount: 0,
                 tasks: [],
-                statusMessage: "Choose today’s template"
+                statusMessage: "Choose today’s routine"
             )
         }
 

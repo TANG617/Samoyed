@@ -45,11 +45,15 @@ struct ThingStructSystemLiveActivitySnapshot: Equatable, Sendable {
     let minuteOfDay: Int
     let currentBlock: ThingStructSystemBlockReference?
     let displayBlock: ThingStructSystemBlockReference?
-    let displayTask: ThingStructSystemTaskReference?
+    let displayTasks: [ThingStructSystemTaskReference]
     let displayNote: String?
     let displaySourceBlockTitle: String?
     let remainingTaskCount: Int
     let statusMessage: String?
+
+    var displayTask: ThingStructSystemTaskReference? {
+        displayTasks.first
+    }
 
     func tapURL(source: ThingStructSystemSource = .liveActivity) -> URL? {
         // Live Activity 整体点击时，默认跳回 Now 页面。
@@ -256,7 +260,7 @@ extension ThingStructDocumentRepository {
                 activeBlocks: [],
                 topTask: nil,
                 remainingTaskCount: 0,
-                statusMessage: "Choose today’s template"
+                statusMessage: "Choose today’s routine"
             )
         }
 
@@ -299,11 +303,11 @@ extension ThingStructDocumentRepository {
                 minuteOfDay: date.minuteOfDay,
                 currentBlock: nil,
                 displayBlock: nil,
-                displayTask: nil,
+                displayTasks: [],
                 displayNote: nil,
                 displaySourceBlockTitle: nil,
                 remainingTaskCount: 0,
-                statusMessage: "Choose today’s template"
+                statusMessage: "Choose today’s routine"
             )
         }
 
@@ -350,7 +354,7 @@ extension ThingStructDocumentRepository {
             minuteOfDay: now.minuteOfDay,
             currentBlock: currentBlock,
             displayBlock: displaySelection?.block,
-            displayTask: displaySelection?.task,
+            displayTasks: displaySelection?.tasks ?? [],
             displayNote: displaySelection?.note,
             displaySourceBlockTitle: displaySourceBlockTitle,
             remainingTaskCount: remainingTaskCount,
@@ -578,7 +582,7 @@ extension ThingStructDocumentRepository {
         blocksByID: [UUID: ThingStructSystemBlockReference]
     ) -> (
         block: ThingStructSystemBlockReference,
-        task: ThingStructSystemTaskReference,
+        tasks: [ThingStructSystemTaskReference],
         note: String?
     )? {
         let tasksByBlockID = Dictionary(uniqueKeysWithValues: now.taskSections.map { ($0.id, $0) })
@@ -587,23 +591,33 @@ extension ThingStructDocumentRepository {
         for item in now.activeChain {
             guard
                 let section = tasksByBlockID[item.id],
-                let task = section.tasks.first(where: { !$0.isCompleted }),
                 let block = blocksByID[item.id]
             else {
                 continue
             }
 
+            let tasks = section.tasks
+                .filter { !$0.isCompleted }
+                .prefix(2)
+                .map { task in
+                    ThingStructSystemTaskReference(
+                        date: now.date,
+                        blockID: section.id,
+                        taskID: task.id,
+                        title: task.title,
+                        blockTitle: section.title,
+                        layerIndex: section.layerIndex,
+                        isCurrentBlock: section.isCurrent
+                    )
+                }
+
+            guard !tasks.isEmpty else {
+                continue
+            }
+
             return (
                 block: block,
-                task: ThingStructSystemTaskReference(
-                    date: now.date,
-                    blockID: section.id,
-                    taskID: task.id,
-                    title: task.title,
-                    blockTitle: section.title,
-                    layerIndex: section.layerIndex,
-                    isCurrentBlock: section.isCurrent
-                ),
+                tasks: Array(tasks),
                 note: notesByBlockID[item.id]
             )
         }

@@ -86,60 +86,6 @@ struct ToggleTaskCompletionIntent: AppIntent {
     }
 }
 
-// Live Activity 里点击“完成任务”按钮时走这个 intent。
-struct CompleteLiveActivityTaskIntent: AppIntent {
-    static let title: LocalizedStringResource = "Complete Live Activity Task"
-    static let description = IntentDescription("Complete the task currently shown in the ThingStruct Live Activity.")
-    static let openAppWhenRun = false
-    static let isDiscoverable = false
-
-    @Parameter(title: "Date ISO")
-    var dateISO: String
-
-    @Parameter(title: "Block ID")
-    var blockID: String
-
-    @Parameter(title: "Task ID")
-    var taskID: String
-
-    init() {}
-
-    init(dateISO: String, blockID: String, taskID: String) {
-        self.dateISO = dateISO
-        self.blockID = blockID
-        self.taskID = taskID
-    }
-
-    func perform() async throws -> some IntentResult {
-        guard
-            let localDay = LocalDay(isoDateString: dateISO),
-            let blockUUID = UUID(uuidString: blockID),
-            let taskUUID = UUID(uuidString: taskID)
-        else {
-            return .result()
-        }
-
-        let repository = ThingStructDocumentRepository.widgetLive
-        _ = try repository.completeTask(
-            on: localDay,
-            blockID: blockUUID,
-            taskID: taskUUID
-        )
-
-        WidgetCenter.shared.reloadTimelines(ofKind: ThingStructSharedConfig.widgetKind)
-
-        if #available(iOS 16.1, *) {
-            // 完成任务会影响当前 block 的剩余任务数，所以 Live Activity 也要同步刷新。
-            _ = try await ThingStructCurrentBlockLiveActivityController.sync(
-                using: .widgetLive,
-                at: .now
-            )
-        }
-
-        return .result()
-    }
-}
-
 // 以下几个 intent 主要给 iOS 18 Control Widget 使用。
 // 它们和 App Shortcuts 一样，本质上都是“系统入口 -> 内部命令”的翻译层。
 struct OpenNowControlIntent: AppIntent {

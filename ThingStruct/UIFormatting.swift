@@ -1,6 +1,26 @@
 import Foundation
 import SwiftUI
 
+enum ThingStructSimulationClock {
+    static func adjusted(_ date: Date) -> Date {
+#if DEBUG
+        guard
+            let rawValue = ProcessInfo.processInfo.environment["THINGSTRUCT_SIMULATION_MINUTE"],
+            let minute = Int(rawValue),
+            (0 ..< 24 * 60).contains(minute)
+        else {
+            return date
+        }
+
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: date)
+        return calendar.date(byAdding: .minute, value: minute, to: startOfDay) ?? date
+#else
+        return date
+#endif
+    }
+}
+
 // 这个文件放的是“只服务展示”的小工具。
 // 一个很重要的分层习惯是：
 // - 业务规则放 Engine / Store / Repository
@@ -8,32 +28,12 @@ import SwiftUI
 // 这样可以避免 domain model 被 UI 文案细节污染。
 extension Int {
     var formattedTime: String {
-        let start = Calendar.current.startOfDay(for: .now)
-        guard let date = Calendar.current.date(byAdding: .minute, value: self, to: start) else {
-            return ""
-        }
-        let formatter = DateFormatter()
-        formatter.locale = .current
-        formatter.timeStyle = .short
-        formatter.dateStyle = .none
-        return formatter.string(from: date)
+        // 这里把“分钟数”格式化成 `HH:mm`。
+        let hour = self / 60
+        let minute = self % 60
+        return String(format: "%02d:%02d", hour, minute)
     }
 
-    var timelineLayerBadgeTitle: String {
-        self == 0 ? "Block" : "Overlay"
-    }
-
-    var nextTimelineLayerTitle: String {
-        "Overlay"
-    }
-
-    var addNextTimelineLayerActionTitle: String {
-        "Add Overlay"
-    }
-
-    var newNextTimelineLayerActionTitle: String {
-        "New Overlay"
-    }
 }
 
 extension LocalDay {
@@ -53,14 +53,15 @@ extension LocalDay {
     }
 
     var nowNavigationTitle: String {
+        // `Now` 页顶部标题故意固定成英文缩写风格，避免受当前系统语言格式影响太大。
         let components = DateComponents(year: year, month: month, day: day)
         guard let date = Calendar.current.date(from: components) else {
             return description
         }
 
         let formatter = DateFormatter()
-        formatter.locale = .current
-        formatter.setLocalizedDateFormatFromTemplate("EEE MMM d")
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "EEE, MMM d"
         return formatter.string(from: date)
     }
 }
@@ -170,7 +171,7 @@ struct RootScreenContainer<Value, Content: View>: View {
 
 #Preview("Recoverable Error") {
     RecoverableErrorView(
-        title: "Unable to Load Templates",
+        title: "Unable to Load Routines",
         message: "The preview is simulating a recoverable state."
     ) {}
 }

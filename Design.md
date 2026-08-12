@@ -1,406 +1,307 @@
-# ThingStruct UI Design
+# ThingStruct Design
 
-- 版本：v0.3
-- 日期：2026-08-07
-- 状态：P0 体验基线
+本文档定义 ThingStruct 的 iOS 产品结构、界面层级和术语。当前设计以 [PRD.md](/Users/timli/workspace/ThingStruct/PRD.md) 为准：ThingStruct 是一个 config-first routine runner，routine 结构由 `Routine Definition` 定义，App 只负责每日选择、物化、展示、提醒和 checklist 执行。
 
-本文档定义 ThingStruct 当前产品阶段的 iOS UI 目标。
+如果本文档与 PRD 冲突，以 PRD 为准。
 
-文档权威顺序：
+## 1. Design Goal
 
-1. [PRD.md](/Users/timli/workspace/ThingStruct/PRD.md) 定义产品目标、用户和范围。
-2. [README.md](/Users/timli/workspace/ThingStruct/README.md) 定义领域模型、算法和约束。
-3. 本文档定义 UI 如何把核心语义变成用户体验。
+ThingStruct 的界面目标是让用户稳定运行已经定义好的 routine，而不是在手机上临时规划或编辑一天。
 
-如果已有 UI 与本文档冲突，应把本文档视为目标状态。已有但冻结的页面和入口可以保留，不继续扩展。
+UI 应帮助用户完成四件事：
 
-## 1. 设计目标
+- 导入并理解可运行的 Routine Definition。
+- 每个本地自然日选择一个 routine。
+- 查看当天 Materialized Day 的只读结构。
+- 在执行过程中完成 checklist item。
 
-ThingStruct 的 UI 只追求一个结果：
+UI 不应承担：
 
-> 用户无需重新规划，也能快速知道现在是什么、现在做什么、接下来是什么。
+- 可视化 routine builder。
+- Today 页面里的 block 创建、编辑、拖拽、resize、cancel。
+- 从当天临时结构保存为 routine。
+- task inbox 或 ad hoc todo capture。
 
-设计优先级依次为：
+## 2. Core Mental Model
 
-1. 空数据下完成真实首次激活。
-2. 打开 App 立即理解当前状态。
-3. 一次点按完成当前 checklist。
-4. 今天不同时快速切换或轻量修正。
-5. 复杂管理能力保持低频和低权重。
+用户心智应始终是：
 
-UI 不以展示领域模型完整性为目标。`activeChain`、`layerIndex`、`taskSourceBlock`、候选窗口、物化和 override 优先级可以存在于核心层，但不应要求普通用户理解。
+1. 我先在配置文件或外部工具里定义 routine。
+2. 我把 Routine Config File 导入 ThingStruct。
+3. 我每天选择一个 routine。
+4. App 把它物化为当天只读结构。
+5. 我只在当天勾选 checklist，完成状态不会改动 routine 本身。
 
-## 2. 体验原则
+## 3. Terminology
 
-### 2.1 `Now` 是产品
+### 3.1 Routine Definition
 
-- 默认启动进入 `Now`。
-- 首屏优先显示当前状态与当前步骤。
-- 模板、时间轴和设置不能成为完成当前步骤的前置页面。
-- 新功能只有在能改善 `Now` 或核心闭环时才获得视觉权重。
+`Routine Definition` 是 routine 结构的唯一权威来源。
 
-### 2.2 自动运行，例外切换
+它描述：
 
-- 今天存在明确默认模板时直接运行。
-- 不在每天启动时强制弹出模板选择器。
-- 用户通过“今天不同”处理例外。
-- 切换模板时说明对今天已有完成状态和临时修改的影响。
+- routine 元信息，例如名称、说明、版本。
+- block 结构。
+- overlay / nested block 关系。
+- 时间规则。
+- note。
+- checklist item。
+- reminder rule。
 
-### 2.3 创建只服务激活与修正
+它不保存：
 
-- 第一次创建只收集运行今天必需的信息。
-- 不在首次激活中暴露复杂层级、相对时间、候选模板和 schedule 术语。
-- 日常创建入口降权。
-- 复杂编辑器可以保留为高级能力，但不进入 P0 主路径。
+- 某一天 checklist 的完成状态。
+- 某一天的运行进度。
+- 用户在当天临时做过什么。
 
-### 2.4 内容优先于装饰
+### 3.2 Routine Config File
 
-- 使用系统导航、系统字体、系统背景与 SF Symbols。
-- 通过字号、间距和少量色彩建立层次。
-- 当前行动比统计、解释和装饰更突出。
-- 不用卡片数量表达产品完整度。
+`Routine Config File` 是承载 `Routine Definition` 的具体文件。
 
-### 2.5 原生且可恢复
+产品概念不绑定 YAML。当前实现可以先支持 YAML，但设计语言应始终使用 `Routine Config File`，为 TOML、JSON 或其他可校验格式保留空间。
 
-- 优先使用 `TabView`、`NavigationStack`、`sheet`、`List`、`ScrollView` 和系统表单。
-- 任何 destructive 切换都必须确认后果。
-- loading、empty、error 都提供清楚的下一步。
-- UI 不自行复制核心算法。
+### 3.3 Routine Library
 
-## 3. 根体验与导航
+`Routine Library` 是本地保存的、已导入并通过校验的 Routine Definition 集合。
 
-### 3.1 首次激活优先于 Tab
+它负责：
 
-当生产文档中没有任何可运行模板时，进入首次激活，而不是展示填充好的 sample data，也不是让用户面对空的模板管理页。
+- 展示可运行 routine。
+- 预览 routine 的结构。
+- 导入 Routine Config File。
+- 导出 Routine Config File。
+- 作为每日 routine 选择的来源。
 
-首次激活可以使用全屏流程或导航流程，完成后返回 `Now`。它至少提供：
+它不是：
 
-1. `使用起步模板`
-2. `创建简单日型`
-3. `导入已有结构`，仅在导入能力稳定时显示
+- 手机端 routine 编辑器。
+- 模板编辑器。
+- 当天计划编辑器。
 
-默认推荐“使用起步模板”，但所有起步内容必须明确是待用户确认和修改的模板，不能伪装成用户的历史数据。
+### 3.4 Daily Routine Selection
 
-首次激活成功标准：用户在 5 分钟内得到一个真实的今日计划并看到可用的 `Now`。
+`Daily Routine Selection` 是某个本地自然日选择的唯一 routine。
 
-### 3.2 根导航
+v1 规则：
 
-激活后使用三个一级 tab：
+- 一个自然日只能选择一个 routine。
+- 不支持多个 routine 组合运行。
+- 不通过 Today 页面拼装 routine。
+- 切换今天的 routine 是明确的日级选择，不是 block 级编辑。
+
+### 3.5 Materialized Day
+
+`Materialized Day` 是 Daily Routine Selection 在某个日期上的只读投影。
+
+它包含：
+
+- 当天 block 时间线。
+- note。
+- checklist item。
+- reminder。
+- 当前 active block / task source 等运行推导。
+
+Materialized Day 可以缓存或持久化，但不能成为 routine 结构的权威来源。
+
+### 3.6 Execution State
+
+`Execution State` 是某一天的运行状态。
+
+它包含：
+
+- checklist item 是否完成。
+- 完成时间。
+- 当天当前选择或 UI selection。
+
+它不改变：
+
+- Routine Definition。
+- Routine Config File。
+- Routine Library 中的 routine 结构。
+
+## 4. Data Hierarchy
+
+```mermaid
+flowchart TD
+    A["Routine Config File<br/>(YAML/TOML/JSON etc.)"] --> B["Routine Definition<br/>(structure authority)"]
+    B --> C["Routine Library<br/>(validated local routines)"]
+    C --> D["Daily Routine Selection<br/>(one routine per local day)"]
+    D --> E["Materialized Day<br/>(read-only projection)"]
+    E --> F["Execution State<br/>(checklist completion only)"]
+```
+
+结构状态和执行状态必须分离：
+
+- Structure state 来自 Routine Definition。
+- Execution state 属于某一天。
+- Checklist completion 不回写 Routine Definition。
+
+## 5. Root Navigation
+
+根界面使用 `TabView`，固定三个一级页面：
 
 1. `Now`
 2. `Today`
 3. `Library`
 
-语义分工：
+推荐图标：
 
-- `Now`：现在是什么、做什么、接下来是什么。
-- `Today`：今天整体如何，以及如何处理今天的例外。
-- `Library`：低频管理模板和默认日。
+- `Now`: `bolt.circle`
+- `Today`: `calendar`
+- `Library`: `square.stack.3d.up`
 
-默认启动进入 `Now`。每个 tab 保留独立 `NavigationStack` 状态。
+## 6. Now
 
-### 3.3 导航优先级
+### Purpose
 
-- 从 Widget、通知或系统入口进入时，优先落到对应的 `Now` 或 block 上下文。
-- 从 `Now` 可以进入当前 block 的 `Today` 位置。
-- “今天不同”可以从 `Now` 或 `Today` 进入当天模板切换。
-- Library 不承担每日启动流程。
+`Now` 回答：现在这个 routine 运行到哪里了？
 
-## 4. `Now`
+### Shows
 
-### 4.1 页面目标
+- 当前 active block。
+- 当前 note。
+- 当前 checklist item 或 checklist section。
+- 距离当前 block 结束或下一段开始的时间提示。
+- 当天尚未选择 routine 时的选择入口。
 
-`Now` 必须在一次扫视中回答：
+### Allows
 
-1. 当前是什么状态？
-2. 这个状态到什么时候？
-3. 现在最需要做哪几件事？
-4. 接下来是什么？
+- 勾选当前 checklist item。
+- 打开 Today 中对应位置。
+- 打开 Library 选择今天 routine。
 
-### 4.2 信息结构
+### Does Not Allow
 
-页面自上而下为：
+- 编辑 block。
+- 编辑 note。
+- 编辑 checklist 内容。
+- 改时间。
+- 新增临时任务。
 
-1. 当前状态
-2. 当前 checklist
-3. 下一状态
-4. 次要操作
+## 7. Today
 
-#### 当前状态
+### Purpose
 
-展示：
+`Today` 回答：今天选择的 routine 被物化成了什么结构？
 
-- 当前 block 标题
-- 开始与结束时间
-- 必要的短 note
-- 空白时段或无计划状态
+### Shows
 
-当前 block 是首屏最强元素。层级只通过必要的来源说明和克制的色彩表达，不显示 `L0`、`L1` 等术语。
+- 只读 timeline。
+- block / overlay 层级。
+- open time gap。
+- selected block detail。
+- note、checklist、reminder 的只读内容。
+- checklist completion state。
 
-#### 当前 checklist
+### Allows
 
-- 未完成项优先。
-- 首屏默认展示最多 3 项。
-- 每项一次点按即可完成。
-- 已完成项折叠、摘要或明显降权。
-- 如果任务来自下层 block，只显示自然语言来源说明。
-- 不在 `Now` 提供新增通用任务入口。
+- 选择 block 查看详情。
+- 展开或收起详情面板。
+- 跳到当前 active block。
+- 勾选 checklist item，前提是该 checklist item 是执行状态的一部分。
 
-#### 下一状态
+### Does Not Allow
 
-以低于当前状态的权重展示：
+- 创建 block。
+- 编辑 block title、time、note、checklist、reminder。
+- 拖拽或 resize block。
+- cancel block。
+- add overlay。
+- 保存今天为 routine。
+- 将 open time gap 转换为 block。
 
-- 下一 block 标题
-- 预计开始时间
+## 8. Library
 
-如果没有下一状态，不显示占位卡。
+### Purpose
 
-#### 次要操作
+`Library` 回答：有哪些已确认的 routine 可以运行？今天要运行哪一个？
 
-只保留：
+### Top-Level Areas
 
-- `今天不同`
-- `查看今天`
+- `Routines`: Routine Library，展示已导入 routines，并允许选择今天的 routine。
+- `Routine Config Files`: 导入、校验、导出配置文件。
+- `Settings`: 与 routine 结构无关的显示偏好。
 
-复杂编辑、模板管理和外观设置不得进入主行动区。
+### Routines
 
-### 4.3 状态设计
+Routines 页面应展示：
 
-#### 尚未激活
+- 今日 routine 选择状态。
+- Routine Library 中的 routine 列表。
+- 每个 routine 的只读预览。
+- block、overlay、checklist、reminder 的摘要。
+- `Select for Today` 操作。
 
-进入首次激活，不显示 sample 历史。
+Routines 页面不展示：
 
-#### 今天没有默认模板
+- 编辑 routine 的 form。
+- 从近期日期保存 routine 的按钮。
+- weekday default / special day override 编辑器。
+- tomorrow regenerate / rebuild 操作。
 
-提供三个清楚选项：
+### Routine Config Files
 
-- 运行已有日型
-- 创建简单日型
-- 今天不运行模板
+Routine Config Files 页面应展示：
 
-#### 空白时段
+- Import Routine Config File。
+- 导入预览和校验结果。
+- 导入后加入 Routine Library。
+- Export Selected Routine。
 
-显示“当前是空白时段”和下一状态。不要用错误或缺失数据的语气。
+导入行为必须是 library-level 操作：
 
-#### 当前无 checklist
+- 不替换今天的 Materialized Day。
+- 不修改当天 Execution State。
+- 不把 checklist completion 混入 Routine Definition。
 
-保留当前状态，显示简短完成或无步骤说明，不展示空任务容器。
+## 9. System Surfaces
 
-#### 全部完成
+Widgets、Live Activities、Controls、Shortcuts、notifications 只服务运行和显示：
 
-显示完成状态和下一 block，不继续强调已完成列表。
+- 展示当前 routine 状态。
+- 打开 Now、Today 或 Library。
+- 完成当前 checklist item。
 
-#### 加载或错误
+它们不得暴露：
 
-使用系统 loading 与可恢复错误界面。错误提供重试，必要时提供进入 Library 修复数据的入口。
+- 创建 block。
+- 编辑时间。
+- 修改 routine。
+- 切换结构，除非跳转回 App 进行明确的 Daily Routine Selection。
 
-## 5. `Today`
+## 10. Visual Direction
 
-### 5.1 页面目标
+整体视觉应接近 Apple 原生系统应用：
 
-`Today` 是结构查看器和当天例外修正入口，不是日常主编排器。
+- 使用 `TabView`、`NavigationStack`、`List`、`ScrollView`、toolbar、sheet。
+- 使用系统分组背景。
+- 使用 SF Symbols。
+- 使用动态字体。
+- 保持信息密度清晰，不做营销式 landing page。
 
-它回答：
+Today timeline 可以定制视觉，但必须保持只读心智：
 
-- 今天整体是什么结构？
-- 当前位于哪里？
-- 今天不同时，最小修改是什么？
+- selected state 可以高亮。
+- open gap 可以显示，但不应使用加号暗示新增。
+- block detail 面板不出现编辑 action group。
 
-### 5.2 时间轴
+## 11. Implementation Notes
 
-- 使用纵向时间轴。
-- 默认定位到当前时间附近。
-- 当前时间线清楚但不遮挡内容。
-- Base 与 overlay 的关系通过嵌套和色阶表达。
-- 运行时 blank 以低权重表达。
-- 当前 block 最突出，祖先上下文次之。
-- 时间显示采用 5 分钟精度，当前时间线保持真实分钟。
+当前代码中仍可能存在历史内部命名，例如 `TemplateEngine`、`SavedDayTemplate`、`TemplatesScreenModel`。这些是迁移期实现细节，不应出现在用户可见文案中，也不改变产品术语：
 
-### 5.3 P0 交互
+- 用户可见术语使用 Routine。
+- 配置文件使用 Routine Config File。
+- 结构权威使用 Routine Definition。
+- 本地集合使用 Routine Library。
 
-P0 优先支持：
+长期可以逐步把内部命名迁移到 Routine，但迁移不应重新引入 App-side editor。
 
-- 查看 block 详情。
-- 切换今天的模板。
-- 选择今天不运行模板。
-- 对今天做标题、时间、note 或 checklist 的小幅修改。
-- 明确区分“只改今天”和“修改以后”。
+## 12. Acceptance Checklist
 
-P0 不把以下能力作为主入口：
-
-- 多层 overlay 编排。
-- 自由 reparent。
-- 高频新建 block。
-- 直接操纵所有时间边界。
-- 未来多日 schedule 管理。
-
-已有高级编辑可以保留，但应从明确的二级编辑入口进入，且不在验证期继续扩展。
-
-### 5.4 Block 详情
-
-- 使用原生 sheet。
-- 显示标题、时间、短 note 和 checklist。
-- 如果存在父级关系，使用自然语言说明。
-- 主要操作是查看和编辑今天。
-- destructive 操作位于编辑页末尾并明确后果。
-
-## 6. `Library`
-
-### 6.1 页面目标
-
-Library 是低频基础设施入口，不承担日常启动。
-
-P0 只需要：
-
-1. 已保存日型
-2. 简单默认日设置
-3. 创建或编辑日型
-
-### 6.2 已保存日型
-
-每个模板应让用户无需进入编辑器就能区分：
-
-- 标题
-- 主要时间段预览
-- 代表性 checklist 摘要
-- 适用日
-
-主要动作：
-
-- 用于今天
-- 编辑
-- 设为默认
-
-### 6.3 创建日型
-
-必须支持没有历史数据时创建第一份模板。入口优先级：
-
-1. 使用起步模板
-2. 创建简单日型
-3. 从某个真实日保存
-4. 导入，若能力可用
-
-“最近三天候选”只能作为实验性辅助来源，不能成为唯一创建入口。
-
-### 6.4 默认日设置
-
-- 用“通常周几运行”表达 weekday default。
-- 保存后由系统自动运行匹配日期。
-- 不要求用户理解 rule、override、final 或 regenerate。
-- 特殊日期优先通过当天的“今天不同”处理。
-
-### 6.5 冻结区
-
-以下内容不进入 P0 Library 主结构：
-
-- 最近三天候选窗口
-- date override 管理器
-- regenerate 控制
-- YAML 导入导出的突出入口
-- 系统入口目录
-- 主题和非必要外观设置
-
-如果为兼容已有实现而暂时保留，应放在低权重的实验或高级区域。
-
-## 7. 视觉系统
-
-### 7.1 色彩
-
-- 使用系统背景层次。
-- 只使用一个稳定强调色。
-- Layer 色阶只辅助理解嵌套，不能成为理解信息的唯一方式。
-- Blank 使用中性色。
-- 不为冻结能力新增主题或色板。
-
-### 7.2 字体与层级
-
-- 使用 Dynamic Type 和系统字级。
-- 当前 block 标题使用页面最强字级。
-- 当前未完成 checklist 高于 note、统计和已完成内容。
-- 下一状态和来源说明使用次级字色。
-
-### 7.3 容器
-
-- 优先使用系统 grouped background、List、Form 和原生 sheet。
-- 卡片只用于表达一个完整信息单元。
-- 避免每段信息都单独成卡。
-- 避免大面积渐变、复杂阴影和自绘玻璃。
-
-### 7.4 动效
-
-- 任务完成提供轻量状态反馈。
-- 模板切换明确表达今天正在重建。
-- 遵守 Reduce Motion。
-- 不为装饰增加持续动画。
-
-## 8. 文案原则
-
-- 使用用户语言：日型、今天、当前、接下来、今天不同。
-- 避免内部语言：materialize、active chain、task source、override priority、layer index。
-- 不使用监督式或责备式语气。
-- 空态说明发生了什么，并给出一个明确下一步。
-- destructive 操作说明会影响今天还是以后。
-
-## 9. 可访问性
-
-必须支持：
-
-- Dynamic Type
-- VoiceOver
-- 足够的点按热区
-- 深色与浅色外观
-- Reduce Motion
-- 不依赖颜色表达层级或完成状态
-
-关键 accessibility label 至少包含：
-
-- block 标题
-- 开始和结束时间
-- 是否为当前状态
-- checklist 完成状态
-- 按钮行为及其影响范围
-
-## 10. P0 验收流程
-
-必须用空数据完成以下完整流程：
-
-1. 首次打开 App。
-2. 在 5 分钟内创建或确认一个日型。
-3. 立即进入今天的 `Now`。
-4. 看懂当前状态、结束时间和当前 checklist。
-5. 一次点按完成 checklist。
-6. 通过“今天不同”切换另一个日型。
-7. 进入 `Today` 做一次只影响今天的轻量修正。
-8. 退出并重新打开 App，状态保持一致。
-
-每一步都必须覆盖：
-
-- 正常状态
-- 空态
-- 错误恢复
-- Dynamic Type
-- VoiceOver 基本路径
-
-## 11. 实现优先级
-
-1. 生产空数据与首次激活
-2. 默认模板自动运行
-3. `Now` 信息层级与 checklist 完成
-4. “今天不同”模板切换
-5. `Today` 查看与轻量修正
-6. Library 的最小模板创建与默认设置
-7. P0 完整流程测试与 7 天用户验证
-8. 验证通过后再评估一个 `Now` Widget
-
-实现顺序不得因为某项冻结能力已经存在或技术上有趣而改变。
-
-## 12. 当前实现关系
-
-当前仓库已经实现三个 tab、模板引擎、复杂 Today 编辑、Widget、Live Activity、Controls、Shortcuts、Quick Actions、通知和导入导出。
-
-这些实现是技术资产，不是当前产品范围证明。维护原则：
-
-- P0 之外只修复阻断性回归，不继续扩展。
-- 不为冻结入口增加新的核心抽象。
-- 不因已有 sample data 看起来完整而跳过真实首次激活。
-- 新 UI 决策必须能对应 PRD 的核心指标或 P0 验收流程。
+- Today 没有 block create/edit/resize/cancel/add overlay。
+- Today 没有 save today as routine。
+- Library 使用 Routines 和 Routine Config Files 术语。
+- Routine Config File import 加入 library，不替换今天。
+- 每天选择一个 routine。
+- Checklist completion 只改变 Execution State。
+- System surfaces 不提供结构编辑能力。

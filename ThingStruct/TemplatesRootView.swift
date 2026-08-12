@@ -1,1029 +1,612 @@
 import SwiftUI
 
-struct TemplatesRootView: View {
+struct RoutinesRootView: View {
     @Environment(ThingStructStore.self) private var store
-
-    @State private var sheet: TemplatesSheet?
     @State private var pendingTodayChoice: PendingTodayChoice?
 
     var body: some View {
         RootScreenContainer(
             isLoaded: store.isLoaded,
-            loadingTitle: "Loading Templates",
+            loadingTitle: "Loading Routines",
             loadingSystemImage: "square.stack.3d.up",
-            loadingDescription: "Preparing today’s chooser, your template library, and schedule defaults.",
-            errorTitle: "Unable to Load Templates",
-            retry: store.reload
-        ) {
-            try store.templatesScreenModel()
-        } content: { model in
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 20) {
-                    todaySection(model: model)
-                    savedTemplatesSection(model: model)
-                    defaultsSection(model: model)
-                    recentSuggestionsSection(model: model)
-                }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 20)
+            loadingDescription: "Preparing today’s routine choice and your local routine library.",
+            errorTitle: "Unable to Load Routines",
+            retry: store.reload,
+            load: { try store.templatesScreenModel() }
+        ) { model in
+            List {
+                todaySection(model: model)
+                availableSection(model: model)
             }
-            .background(Color(uiColor: .systemGroupedBackground))
+            .listStyle(.insetGrouped)
         }
-        .navigationTitle("Templates")
+        .navigationTitle("Routines")
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(item: $sheet) { sheet in
-            switch sheet {
-            case let .save(sourceDate):
-                SaveTemplateSheet(sourceDate: sourceDate) { title in
-                    store.saveSuggestedTemplate(from: sourceDate, title: title)
-                }
-
-            case let .edit(templateID):
-                if let template = store.savedTemplate(id: templateID) {
-                    TemplateEditorSheet(
-                        template: template,
-                        assignedWeekdays: store.assignedWeekdays(for: template.id),
-                        occupiedWeekdays: store.occupiedWeekdays(excluding: template.id)
-                    ) { title, blocks, assignedWeekdays in
-                        try store.saveEditedTemplate(
-                            template.id,
-                            title: title,
-                            blocks: blocks,
-                            assignedWeekdays: assignedWeekdays
-                        )
-                    } onDelete: {
-                        store.deleteSavedTemplate(template.id)
-                    }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink {
+                    RoutineEditorView(mode: .create)
+                } label: {
+                    Label("New Routine", systemImage: "plus")
                 }
             }
         }
         .confirmationDialog(
-            "Replace today’s current plan?",
+            "Switch today’s routine?",
             isPresented: Binding(
                 get: { pendingTodayChoice != nil },
                 set: { if !$0 { pendingTodayChoice = nil } }
             ),
             titleVisibility: .visible
         ) {
-            Button("Replace Today’s Plan", role: .destructive) {
+            Button("Switch Routine", role: .destructive) {
                 guard let pendingTodayChoice else { return }
-                attemptUseToday(
+                chooseForToday(
                     templateID: pendingTodayChoice.templateID,
-                    source: pendingTodayChoice.source,
                     forceReplace: true
                 )
             }
-
-            Button("Keep Current Plan", role: .cancel) {
+            Button("Keep Current Routine", role: .cancel) {
                 pendingTodayChoice = nil
             }
         } message: {
-            Text("Today already has edits or completed checklist items. Replacing it will rebuild the day from the selected template.")
+            Text("Today already has execution state. Switching routines may reset checklist completion.")
         }
     }
 
+    @ViewBuilder
     private func todaySection(model: TemplatesScreenModel) -> some View {
-        let chooser = model.todayChooser
-        let currentTitle = chooser.currentSelection?.title
-            ?? (chooser.requiresSelection ? "Choose today’s template" : "No template today")
-
-        return VStack(alignment: .leading, spacing: 14) {
-            SectionHeader(
-                title: "Today",
-                subtitle: chooser.requiresSelection
-                    ? "Choose today explicitly before Now and Today enter running mode."
-                    : "Switch today quickly without leaving the template library."
-            )
-
-            TemplateCard(isEmphasized: true) {
-                HStack(alignment: .top, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(model.todaySchedule.date.titleText)
-                            .font(.headline)
-
-                        Text(chooser.requiresSelection ? "Waiting for today’s choice" : "Today is already running")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    Spacer(minLength: 12)
-
-                    TemplateBadge(
-                        title: chooser.requiresSelection ? "Choose Today" : "Running",
-                        tint: chooser.requiresSelection ? Color.accentColor : .secondary
+        Section {
+            if let current = model.todayChooser.currentSelection {
+                NavigationLink {
+                    RoutineDetailView(routineID: current.id)
+                } label: {
+                    RoutineListRow(
+                        routine: current,
+                        subtitle: "Selected for today",
+                        isSelected: true
                     )
                 }
-
-                VStack(spacing: 10) {
-                    TodaySummaryRow(title: "Current", value: currentTitle)
-                    TodaySummaryRow(
-                        title: "Default",
-                        value: chooser.defaultTemplate?.title ?? "No weekday default"
-                    )
-
-                    if let overrideTitle = model.todaySchedule.overrideTemplateTitle {
-                        TodaySummaryRow(title: "Special Day", value: overrideTitle)
-                    }
-                }
-
-                if let currentSelection = chooser.currentSelection {
-                    TemplateCandidateSummaryBlock(
-                        template: currentSelection,
-                        showCurrentBadge: true,
-                        showDefaultBadge: currentSelection.isDefaultForToday,
-                        showWeekdays: false
-                    )
-                } else if !chooser.requiresSelection {
-                    Text("Today is intentionally empty until you pick another template.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                if let defaultTemplate = chooser.defaultTemplate {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Recommended Default")
-                            .font(.footnote.weight(.semibold))
-                            .foregroundStyle(.secondary)
-
-                        TemplateCandidateSummaryBlock(
-                            template: defaultTemplate,
-                            showCurrentBadge: defaultTemplate.isCurrentForToday,
-                            showDefaultBadge: true,
-                            showWeekdays: false
-                        )
-
-                        Button {
-                            attemptUseToday(
-                                templateID: defaultTemplate.id,
-                                source: .confirmedDefault,
-                                forceReplace: false
-                            )
-                        } label: {
-                            Label(
-                                defaultTemplate.isCurrentForToday ? "Using Today" : "Use Default",
-                                systemImage: "checkmark.circle"
-                            )
-                            .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(defaultTemplate.isCurrentForToday)
-                    }
-                }
-
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Quick Switch")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(.secondary)
-
-                    if chooser.availableTemplates.isEmpty {
-                        Text("Save a recent suggestion first to make quick template switches available here.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    } else {
-                        VStack(alignment: .leading, spacing: 10) {
-                            ForEach(chooser.availableTemplates) { template in
-                                Button {
-                                    attemptUseToday(
-                                        templateID: template.id,
-                                        source: template.isDefaultForToday ? .confirmedDefault : .pickedTemplate,
-                                        forceReplace: false
-                                    )
-                                } label: {
-                                    HStack(alignment: .center, spacing: 10) {
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            Text(template.title)
-                                                .font(.body.weight(.semibold))
-                                                .foregroundStyle(.primary)
-                                                .lineLimit(1)
-
-                                            if let timeRangeText = template.timeRangeText {
-                                                Text(timeRangeText)
-                                                    .font(.caption)
-                                                    .foregroundStyle(.secondary)
-                                                    .lineLimit(1)
-                                            }
-                                        }
-
-                                        Spacer(minLength: 8)
-
-                                        if template.isCurrentForToday {
-                                            TemplateBadge(title: "Current", tint: Color.accentColor)
-                                        } else if template.isDefaultForToday {
-                                            TemplateBadge(title: "Default", tint: .secondary)
-                                        }
-                                    }
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                }
-                                .buttonStyle(.bordered)
-                                .disabled(template.isCurrentForToday)
-                            }
-                        }
-                    }
-                }
-
-                if chooser.canChooseNoTemplate {
-                    Button {
-                        attemptUseToday(
-                            templateID: nil,
-                            source: .noTemplate,
-                            forceReplace: false
-                        )
-                    } label: {
-                        Label("No Template Today", systemImage: "square.slash")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
-                }
-            }
-        }
-    }
-
-    private func savedTemplatesSection(model: TemplatesScreenModel) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            SectionHeader(
-                title: "Saved Templates",
-                subtitle: model.savedTemplates.isEmpty
-                    ? "Save a recent suggestion first to build your reusable library."
-                    : "Each template stays readable at a glance so you can choose today, set tomorrow, or edit in place."
-            )
-
-            if model.savedTemplates.isEmpty {
-                ContentUnavailableView(
-                    "No Saved Templates",
-                    systemImage: "square.stack.3d.up.slash",
-                    description: Text("Recent Suggestions will help you turn strong recent days into reusable templates.")
-                )
-                .frame(maxWidth: .infinity)
-                .padding(.top, 12)
             } else {
-                ForEach(model.savedTemplates) { template in
-                    SavedTemplateCard(
-                        template: template,
-                        isSelectedForTomorrow: model.tomorrowSchedule.finalTemplateID == template.id,
-                        onUseToday: {
-                            attemptUseToday(
-                                templateID: template.id,
-                                source: template.isDefaultForToday ? .confirmedDefault : .pickedTemplate,
-                                forceReplace: false
-                            )
-                        },
-                        onUseTomorrow: {
-                            store.setTomorrowOverride(templateID: template.id)
-                        },
-                        onEdit: {
-                            sheet = .edit(templateID: template.id)
-                        }
-                    )
-                }
-            }
-        }
-    }
-
-    private func defaultsSection(model: TemplatesScreenModel) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            SectionHeader(
-                title: "Defaults & Schedule",
-                subtitle: "Defaults shape the usual week. Use a special-day override only when a date should deliberately break from the default."
-            )
-
-            TemplateScheduleCard(
-                schedule: model.todaySchedule,
-                heading: "Today",
-                actionTitle: "Rebuild Today"
-            ) {
-                store.rebuildDayPlan(for: model.todaySchedule.date)
-            }
-
-            TemplateScheduleCard(
-                schedule: model.tomorrowSchedule,
-                heading: "Tomorrow",
-                actionTitle: "Regenerate Tomorrow"
-            ) {
-                store.regenerateFutureDayPlan(for: model.tomorrowSchedule.date)
-            }
-
-            if model.savedTemplates.isEmpty {
                 ContentUnavailableView(
-                    "No Templates to Assign",
+                    "Choose Today’s Routine",
                     systemImage: "calendar.badge.exclamationmark",
-                    description: Text("Save a template before setting defaults or special-day overrides.")
+                    description: Text("Select one routine before Now and Today enter running mode.")
                 )
                 .frame(maxWidth: .infinity)
-                .padding(.top, 4)
-            } else {
-                WeekdayRulesCard(
-                    templates: store.savedTemplates,
-                    selectionForWeekday: weekdaySelection(for:)
-                )
-
-                TemplateOverrideCard(
-                    heading: "Today Special Day",
-                    helpText: "Use this only when today should temporarily ignore the weekday default.",
-                    templates: store.savedTemplates,
-                    selection: overrideSelection(for: model.todaySchedule.date, shouldRebuildDayPlan: true)
-                )
-
-                TemplateOverrideCard(
-                    heading: "Tomorrow Special Day",
-                    helpText: "Use this only when tomorrow should temporarily ignore the weekday default.",
-                    templates: store.savedTemplates,
-                    selection: overrideSelection(for: model.tomorrowSchedule.date, shouldRebuildDayPlan: false)
-                )
+                .padding(.vertical, 12)
             }
+        } header: {
+            Text("Today")
         }
     }
 
-    private func recentSuggestionsSection(model: TemplatesScreenModel) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            SectionHeader(
-                title: "Recent Suggestions",
-                subtitle: model.suggestedTemplates.isEmpty
-                    ? "Suggestions appear when recent days have enough reusable structure."
-                    : "Turn strong recent days into reusable templates once they are worth keeping."
-            )
-
-            if model.suggestedTemplates.isEmpty {
-                ContentUnavailableView(
-                    "No Recent Suggestions",
-                    systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90",
-                    description: Text("Keep running real days and save the ones that become repeatable.")
-                )
+    @ViewBuilder
+    private func availableSection(model: TemplatesScreenModel) -> some View {
+        Section {
+            if model.savedTemplates.isEmpty {
+                ContentUnavailableView {
+                    Label("No Routines", systemImage: "square.and.arrow.down")
+                } description: {
+                    Text("Create a reusable routine or import a Routine Config File.")
+                } actions: {
+                    Button {
+                        store.openLibrary(destination: .routineFiles)
+                    } label: {
+                        Label("Import Routine Config File", systemImage: "square.and.arrow.down")
+                    }
+                }
                 .frame(maxWidth: .infinity)
-                .padding(.top, 12)
+                .padding(.vertical, 30)
             } else {
-                ForEach(model.suggestedTemplates) { template in
-                    SuggestedTemplateCard(template: template) {
-                        sheet = .save(sourceDate: template.sourceDate)
+                ForEach(model.savedTemplates) { routine in
+                    NavigationLink {
+                        RoutineDetailView(routineID: routine.id)
+                    } label: {
+                        RoutineListRow(
+                            routine: routine,
+                            subtitle: routine.timeRangeText ?? "Reusable routine",
+                            isSelected: routine.isCurrentForToday
+                        )
+                    }
+                    .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                        Button {
+                            chooseForToday(templateID: routine.id, forceReplace: false)
+                        } label: {
+                            Label("Today", systemImage: "calendar.badge.checkmark")
+                        }
+                        .tint(.accentColor)
                     }
                 }
             }
+        } header: {
+            Text("Available")
+        } footer: {
+            Text("Open a routine to review its block structure, notes, tasks, and schedule.")
         }
     }
 
-    private func attemptUseToday(
-        templateID: UUID?,
-        source: DayTemplateSelectionSource,
-        forceReplace: Bool
-    ) {
+    private func chooseForToday(templateID: UUID, forceReplace: Bool) {
         do {
             let result = try store.chooseTemplate(
-                for: LocalDay.today(),
+                for: .today(),
                 templateID: templateID,
-                source: source,
+                source: .pickedTemplate,
                 forceReplace: forceReplace
             )
-
             switch result {
             case .applied:
                 pendingTodayChoice = nil
-
             case .requiresConfirmation:
-                pendingTodayChoice = PendingTodayChoice(
-                    templateID: templateID,
-                    source: source
+                pendingTodayChoice = PendingTodayChoice(templateID: templateID)
+            }
+        } catch {
+            store.presentError(error)
+        }
+    }
+}
+
+private struct PendingTodayChoice: Equatable {
+    let templateID: UUID
+}
+
+private struct RoutineListRow: View {
+    let routine: TemplateCandidateSummary
+    let subtitle: String
+    let isSelected: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "square.stack.3d.up")
+                .foregroundStyle(.tint)
+                .frame(width: 26)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(routine.title)
+                    .font(.body)
+                Text(subtitle)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+
+            Spacer(minLength: 8)
+
+            if isSelected {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.tint)
+                    .accessibilityLabel("Selected for today")
+            }
+        }
+    }
+}
+
+struct RoutineDetailView: View {
+    @Environment(ThingStructStore.self) private var store
+    @State private var isConfirmingReplacement = false
+    @State private var isEditing = false
+    @State private var renderedBlocks: [TimeBlock] = []
+
+    let routineID: UUID
+
+    private var routine: SavedDayTemplate? {
+        store.savedTemplate(id: routineID)
+    }
+
+    private var isCurrentForToday: Bool {
+        store.document.daySelection(for: .today())?.selectedTemplateID == routineID
+            || store.document.dayPlan(for: .today())?.sourceSavedTemplateID == routineID
+    }
+
+    private var previewBlocks: [TimeBlock] {
+        renderedBlocks
+    }
+
+    private var timeRangeText: String {
+        guard
+            let start = previewBlocks.compactMap(\.resolvedStartMinuteOfDay).min(),
+            let end = previewBlocks.compactMap(\.resolvedEndMinuteOfDay).max()
+        else {
+            return "No schedule"
+        }
+        return "\(start.formattedTime) - \(end.formattedTime)"
+    }
+
+    var body: some View {
+        Group {
+            if let routine {
+                List {
+                    Section("Schedule") {
+                        LabeledContent("Time", value: timeRangeText)
+                        LabeledContent("Blocks", value: "\(routine.blocks.count)")
+                        LabeledContent(
+                            "Reminders",
+                            value: "\(routine.blocks.reduce(0) { $0 + $1.reminders.count })"
+                        )
+                    }
+
+                    Section("Template") {
+                        ForEach(previewBlocks) { block in
+                            RoutineTemplateBlockRow(
+                                block: block,
+                                childTitles: previewBlocks
+                                    .filter { $0.parentBlockID == block.id }
+                                    .map(\.title)
+                            )
+                        }
+                    }
+
+                    Section {
+                        Button {
+                            selectForToday(forceReplace: false)
+                        } label: {
+                            Label(
+                                isCurrentForToday ? "Selected for Today" : "Select for Today",
+                                systemImage: isCurrentForToday
+                                    ? "checkmark.circle.fill"
+                                    : "calendar.badge.checkmark"
+                            )
+                        }
+                        .disabled(isCurrentForToday)
+                    }
+                }
+                .listStyle(.insetGrouped)
+                .navigationTitle(routine.title)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            isEditing = true
+                        } label: {
+                            Label("Edit", systemImage: "pencil")
+                        }
+                    }
+                }
+                .navigationDestination(isPresented: $isEditing) {
+                    RoutineEditorView(mode: .edit(routine.id))
+                }
+            } else {
+                ContentUnavailableView(
+                    "Routine Unavailable",
+                    systemImage: "exclamationmark.triangle",
+                    description: Text("This routine may have been deleted or replaced.")
                 )
+            }
+        }
+        .confirmationDialog(
+            "Replace today’s routine?",
+            isPresented: $isConfirmingReplacement,
+            titleVisibility: .visible
+        ) {
+            Button("Replace Routine", role: .destructive) {
+                selectForToday(forceReplace: true)
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Today already has execution state. Replacing it may reset checklist completion.")
+        }
+        .task(id: routine?.updatedAt) {
+            refreshPreview()
+        }
+    }
+
+    private func selectForToday(forceReplace: Bool) {
+        do {
+            switch try store.chooseTemplate(
+                for: .today(),
+                templateID: routineID,
+                source: .pickedTemplate,
+                forceReplace: forceReplace
+            ) {
+            case .applied:
+                isConfirmingReplacement = false
+            case .requiresConfirmation:
+                isConfirmingReplacement = true
             }
         } catch {
             store.presentError(error)
         }
     }
 
-    private func weekdaySelection(for weekday: Weekday) -> Binding<UUID?> {
-        Binding(
-            get: { store.assignedTemplateID(for: weekday) },
-            set: { store.assignWeekday(weekday, to: $0) }
-        )
-    }
-
-    private func overrideSelection(
-        for date: LocalDay,
-        shouldRebuildDayPlan: Bool
-    ) -> Binding<UUID?> {
-        Binding(
-            get: { store.overrideTemplateID(for: date) },
-            set: {
-                store.setOverride(templateID: $0, for: date)
-                if shouldRebuildDayPlan {
-                    store.rebuildDayPlan(for: date)
-                }
-            }
-        )
-    }
-}
-
-private struct PendingTodayChoice: Equatable {
-    let templateID: UUID?
-    let source: DayTemplateSelectionSource
-}
-
-private struct SectionHeader: View {
-    let title: String
-    let subtitle: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title)
-                .font(.title3.weight(.semibold))
-
-            Text(subtitle)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+    private func routineBlockSort(_ lhs: TimeBlock, _ rhs: TimeBlock) -> Bool {
+        if lhs.layerIndex != rhs.layerIndex { return lhs.layerIndex < rhs.layerIndex }
+        if lhs.resolvedStartMinuteOfDay != rhs.resolvedStartMinuteOfDay {
+            return (lhs.resolvedStartMinuteOfDay ?? 0) < (rhs.resolvedStartMinuteOfDay ?? 0)
         }
+        return lhs.id.uuidString < rhs.id.uuidString
+    }
+
+    private func refreshPreview() {
+        guard let routine, let preview = try? TemplateEngine.previewDayPlan(from: routine) else {
+            renderedBlocks = []
+            return
+        }
+        renderedBlocks = preview.blocks
+            .filter { !$0.isCancelled && !$0.isBlankBaseBlock }
+            .sorted(by: routineBlockSort)
     }
 }
 
-private struct TemplateCard<Content: View>: View {
+private struct RoutineTemplateBlockRow: View {
     @Environment(\.thingStructTintPreset) private var tintPreset
+    @State private var isExpanded = true
 
-    var isEmphasized = false
-    @ViewBuilder let content: Content
+    let block: TimeBlock
+    let childTitles: [String]
+
+    private var style: LayerVisualStyle {
+        LayerVisualStyle.forBlock(
+            layerIndex: block.layerIndex,
+            isBlank: false,
+            preset: tintPreset
+        )
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            content
+        DisclosureGroup(isExpanded: $isExpanded) {
+            VStack(alignment: .leading, spacing: 14) {
+                if let note = block.note?.trimmingCharacters(in: .whitespacesAndNewlines), !note.isEmpty {
+                    detailGroup(title: "Note") {
+                        Text(note)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+
+                if !block.tasks.isEmpty {
+                    detailGroup(title: "Tasks") {
+                        ForEach(block.tasks.sorted(by: taskOrder)) { task in
+                            Label(task.title, systemImage: "circle")
+                                .foregroundStyle(.primary)
+                        }
+                    }
+                }
+
+                if !childTitles.isEmpty {
+                    detailGroup(title: "Child Blocks") {
+                        ForEach(childTitles, id: \.self) { title in
+                            Label(title, systemImage: "square.stack.3d.up")
+                        }
+                    }
+                }
+
+                if block.note?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty != false,
+                   block.tasks.isEmpty,
+                   childTitles.isEmpty {
+                    Text("Block only")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.top, 8)
+        } label: {
+            HStack(spacing: 11) {
+                RoundedRectangle(cornerRadius: 2, style: .continuous)
+                    .fill(style.marker)
+                    .frame(width: 4, height: 34)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(block.title)
+                        .font(.body.weight(.semibold))
+                    if let start = block.resolvedStartMinuteOfDay,
+                       let end = block.resolvedEndMinuteOfDay {
+                        Text("\(start.formattedTime)–\(end.formattedTime)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
         }
-        .padding(18)
+        .tint(.primary)
+    }
+
+    private func detailGroup<Content: View>(
+        title: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(style.accent)
+            content()
+                .font(.subheadline)
+        }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            Color(uiColor: isEmphasized ? .systemBackground : .secondarySystemGroupedBackground),
-            in: RoundedRectangle(cornerRadius: 26, style: .continuous)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .stroke(
-                    isEmphasized
-                        ? tintPreset.tintColor.opacity(0.28)
-                        : Color(uiColor: .separator).opacity(0.12),
-                    lineWidth: isEmphasized ? 1.5 : 1
-                )
-        )
+    }
+
+    private func taskOrder(_ lhs: TaskItem, _ rhs: TaskItem) -> Bool {
+        if lhs.order != rhs.order { return lhs.order < rhs.order }
+        return lhs.id.uuidString < rhs.id.uuidString
     }
 }
 
-private struct TodaySummaryRow: View {
-    let title: String
-    let value: String
+enum RoutineEditorMode: Hashable {
+    case create
+    case edit(UUID)
 
-    var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Text(title)
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(.secondary)
-
-            Spacer(minLength: 12)
-
-            Text(value)
-                .font(.subheadline)
-                .multilineTextAlignment(.trailing)
-        }
-    }
-}
-
-private struct SuggestedTemplateCard: View {
-    let template: SuggestedTemplateSummary
-    let onSave: () -> Void
-
-    var body: some View {
-        TemplateCard {
-            HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(template.sourceDate.titleText)
-                        .font(.headline)
-
-                    Text(template.timeRangeText ?? "No resolved time range")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer(minLength: 12)
-
-                TemplateBadge(title: "Suggestion", tint: .secondary)
-            }
-
-            TemplatePreviewRow(
-                titles: template.previewTitles,
-                totalCount: template.totalBlockCount
-            )
-
-            TemplateStatsRow(stats: [
-                .init(title: "\(template.baseBlockCount) base", systemImage: "rectangle.stack"),
-                .init(title: "\(template.overlayCount) overlay", systemImage: "square.stack.3d.up"),
-                .init(title: "\(template.taskBlueprintCount) tasks", systemImage: "checklist"),
-                .init(title: "\(template.reminderCount) reminders", systemImage: "bell")
-            ])
-
-            Button {
-                onSave()
-            } label: {
-                Label("Save Template", systemImage: "square.and.arrow.down")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
-        }
-    }
-}
-
-private struct SavedTemplateCard: View {
-    let template: TemplateCandidateSummary
-    let isSelectedForTomorrow: Bool
-    let onUseToday: () -> Void
-    let onUseTomorrow: () -> Void
-    let onEdit: () -> Void
-
-    var body: some View {
-        TemplateCard(isEmphasized: template.isCurrentForToday || isSelectedForTomorrow) {
-            HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(template.title)
-                        .font(.headline)
-
-                    if let timeRangeText = template.timeRangeText {
-                        Text(timeRangeText)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                Spacer(minLength: 12)
-
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 8) {
-                        badges
-                    }
-
-                    VStack(alignment: .trailing, spacing: 8) {
-                        badges
-                    }
-                }
-            }
-
-            TemplatePreviewRow(
-                titles: template.previewTitles,
-                totalCount: template.totalBlockCount
-            )
-
-            TemplateStatsRow(stats: [
-                .init(title: "\(template.baseBlockCount) base", systemImage: "rectangle.stack"),
-                .init(title: "\(template.overlayCount) overlay", systemImage: "square.stack.3d.up"),
-                .init(title: "\(template.taskCount) tasks", systemImage: "checklist"),
-                .init(title: "\(template.reminderCount) reminders", systemImage: "bell")
-            ])
-
-            if !template.assignedWeekdays.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Defaults")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(.secondary)
-
-                    TemplateChipRow(titles: template.assignedWeekdays.map(\.shortName))
-                }
-            }
-
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 10) {
-                    useTodayButton
-                    useTomorrowButton
-                    editButton
-                }
-
-                VStack(alignment: .leading, spacing: 10) {
-                    useTodayButton
-                    useTomorrowButton
-                    editButton
-                }
-            }
-        }
+    var routineID: UUID? {
+        guard case let .edit(id) = self else { return nil }
+        return id
     }
 
-    @ViewBuilder
-    private var badges: some View {
-        if template.isCurrentForToday {
-            TemplateBadge(title: "Current", tint: Color.accentColor)
-        }
-
-        if template.isDefaultForToday {
-            TemplateBadge(title: "Default", tint: .secondary)
-        }
-
-        if isSelectedForTomorrow {
-            TemplateBadge(title: "Tomorrow", tint: .secondary)
-        }
-    }
-
-    private var useTodayButton: some View {
-        Button(template.isCurrentForToday ? "Using Today" : "Use Today", action: onUseToday)
-            .buttonStyle(.borderedProminent)
-            .disabled(template.isCurrentForToday)
-    }
-
-    private var useTomorrowButton: some View {
-        Button(isSelectedForTomorrow ? "Using Tomorrow" : "Use Tomorrow", action: onUseTomorrow)
-            .buttonStyle(.bordered)
-            .disabled(isSelectedForTomorrow)
-    }
-
-    private var editButton: some View {
-        Button("Edit", action: onEdit)
-            .buttonStyle(.bordered)
-    }
-}
-
-private struct TemplateCandidateSummaryBlock: View {
-    let template: TemplateCandidateSummary
-    let showCurrentBadge: Bool
-    let showDefaultBadge: Bool
-    let showWeekdays: Bool
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(template.title)
-                        .font(.headline)
-
-                    if let timeRangeText = template.timeRangeText {
-                        Text(timeRangeText)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                Spacer(minLength: 12)
-
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 8) {
-                        summaryBadges
-                    }
-
-                    VStack(alignment: .trailing, spacing: 8) {
-                        summaryBadges
-                    }
-                }
-            }
-
-            TemplatePreviewRow(
-                titles: template.previewTitles,
-                totalCount: template.totalBlockCount
-            )
-
-            TemplateStatsRow(stats: [
-                .init(title: "\(template.baseBlockCount) base", systemImage: "rectangle.stack"),
-                .init(title: "\(template.overlayCount) overlay", systemImage: "square.stack.3d.up"),
-                .init(title: "\(template.taskCount) tasks", systemImage: "checklist"),
-                .init(title: "\(template.reminderCount) reminders", systemImage: "bell")
-            ])
-
-            if showWeekdays && !template.assignedWeekdays.isEmpty {
-                TemplateChipRow(titles: template.assignedWeekdays.map(\.shortName))
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var summaryBadges: some View {
-        if showCurrentBadge {
-            TemplateBadge(title: "Current", tint: Color.accentColor)
-        }
-
-        if showDefaultBadge {
-            TemplateBadge(title: "Default", tint: .secondary)
-        }
-    }
-}
-
-private struct WeekdayRulesCard: View {
-    let templates: [SavedDayTemplate]
-    let selectionForWeekday: (Weekday) -> Binding<UUID?>
-
-    var body: some View {
-        TemplateCard {
-            VStack(alignment: .leading, spacing: 14) {
-                Text("Defaults")
-                    .font(.headline)
-
-                Text("Choose the template that each weekday should fall back to by default.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-
-                VStack(spacing: 0) {
-                    ForEach(Array(Weekday.mondayFirst.enumerated()), id: \.element.id) { index, weekday in
-                        HStack(spacing: 12) {
-                            Text(weekday.fullName)
-                                .font(.body)
-
-                            Spacer(minLength: 12)
-
-                            Picker("", selection: selectionForWeekday(weekday)) {
-                                Text("None").tag(UUID?.none)
-                                ForEach(templates) { template in
-                                    Text(template.title).tag(UUID?.some(template.id))
-                                }
-                            }
-                            .pickerStyle(.menu)
-                            .labelsHidden()
-                        }
-                        .padding(.vertical, 12)
-
-                        if index != Weekday.mondayFirst.count - 1 {
-                            Divider()
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-private struct TemplateOverrideCard: View {
-    let heading: String
-    let helpText: String
-    let templates: [SavedDayTemplate]
-    let selection: Binding<UUID?>
-
-    var body: some View {
-        TemplateCard {
-            VStack(alignment: .leading, spacing: 14) {
-                Text(heading)
-                    .font(.headline)
-
-                Text(helpText)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-
-                Picker("Override Template", selection: selection) {
-                    Text("Follow Defaults").tag(UUID?.none)
-                    ForEach(templates) { template in
-                        Text(template.title).tag(UUID?.some(template.id))
-                    }
-                }
-                .pickerStyle(.menu)
-            }
-        }
-    }
-}
-
-private enum TemplatesSheet: Identifiable {
-    case save(sourceDate: LocalDay)
-    case edit(templateID: UUID)
-
-    var id: String {
+    var title: String {
         switch self {
-        case let .save(sourceDate):
-            return "save-\(sourceDate.description)"
-        case let .edit(templateID):
-            return "edit-\(templateID.uuidString)"
+        case .create: "New Routine"
+        case .edit: "Edit Routine"
         }
     }
 }
 
-private struct SaveTemplateSheet: View {
+struct RoutineEditorView: View {
+    @Environment(ThingStructStore.self) private var store
     @Environment(\.dismiss) private var dismiss
-    let sourceDate: LocalDay
-    let onSave: (String) -> Void
-    @State private var title = ""
 
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section("Source") {
-                    Text(sourceDate.titleText)
-                }
+    let mode: RoutineEditorMode
 
-                Section("Template Title") {
-                    TextField("Title", text: $title)
-                }
-            }
-            .navigationTitle("Save Template")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
+    @State private var routineTitle = "Morning Focus"
+    @State private var blockTitle = "Focus Work"
+    @State private var note = ""
+    @State private var startMinute = 7 * 60 + 30
+    @State private var endMinute = 10 * 60 + 30
+    @State private var didLoad = false
+    @State private var isConfirmingDelete = false
 
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        onSave(title.isEmpty ? sourceDate.titleText : title)
-                        dismiss()
-                    }
-                }
-            }
-        }
-        .presentationDetents([.medium])
+    private var isScheduleValid: Bool {
+        startMinute < endMinute
     }
-}
 
-private struct TemplateScheduleCard: View {
-    let schedule: TemplateScheduleSummary
-    let heading: String
-    let actionTitle: String
-    let onRegenerate: () -> Void
-
-    var body: some View {
-        TemplateCard(isEmphasized: schedule.overrideTemplateTitle != nil) {
-            HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(schedule.date.titleText)
-                        .font(.headline)
-
-                    Label(schedule.weekday.fullName, systemImage: "calendar")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer(minLength: 12)
-
-                if schedule.overrideTemplateTitle != nil {
-                    TemplateBadge(title: "Special Day", tint: Color.accentColor)
-                }
-            }
-
-            VStack(alignment: .leading, spacing: 6) {
-                Text("\(heading) Uses")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-
-                Text(schedule.finalTemplateTitle ?? "No template assigned")
-                    .font(.title3.weight(.semibold))
-
-                Text(schedule.overrideTemplateTitle != nil
-                    ? "A special-day override is currently taking precedence over the weekday default."
-                    : "\(heading) will follow the weekday default unless you add a special-day override.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            VStack(spacing: 10) {
-                ScheduleValueRow(title: "Default", value: schedule.weekdayTemplateTitle ?? "None")
-                ScheduleValueRow(title: "Special Day", value: schedule.overrideTemplateTitle ?? "None")
-                ScheduleValueRow(title: "Current Result", value: schedule.finalTemplateTitle ?? "None")
-            }
-
-            Button {
-                onRegenerate()
-            } label: {
-                Label(actionTitle, systemImage: "arrow.clockwise")
-            }
-            .buttonStyle(.bordered)
-        }
-    }
-}
-
-private struct ScheduleValueRow: View {
-    let title: String
-    let value: String
-
-    var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Text(title)
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(.secondary)
-
-            Spacer(minLength: 12)
-
-            Text(value)
-                .font(.subheadline)
-                .multilineTextAlignment(.trailing)
-        }
-    }
-}
-
-private struct TemplateStatsRow: View {
-    let stats: [TemplateStat]
-
-    var body: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 8) {
-                ForEach(stats) { stat in
-                    TemplateBadge(title: stat.title, systemImage: stat.systemImage, tint: .secondary)
-                }
-            }
-
-            VStack(alignment: .leading, spacing: 8) {
-                ForEach(stats) { stat in
-                    TemplateBadge(title: stat.title, systemImage: stat.systemImage, tint: .secondary)
-                }
-            }
-        }
-    }
-}
-
-private struct TemplateStat: Identifiable {
-    let id = UUID()
-    let title: String
-    let systemImage: String
-}
-
-private struct TemplatePreviewRow: View {
-    let titles: [String]
-    let totalCount: Int
-
-    private var hiddenCount: Int {
-        max(totalCount - titles.count, 0)
+    private var canSave: Bool {
+        !routineTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && isScheduleValid
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Preview")
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(.secondary)
-
-            if titles.isEmpty {
-                Text("No visible blocks")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            } else {
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 8) {
-                        previewChips
-                    }
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        previewChips
-                    }
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var previewChips: some View {
-        ForEach(titles, id: \.self) { title in
-            TemplateBadge(title: title, tint: .primary, isSoft: false)
-        }
-
-        if hiddenCount > 0 {
-            TemplateBadge(title: "+\(hiddenCount) more", tint: .secondary)
-        }
-    }
-}
-
-private struct TemplateChipRow: View {
-    let titles: [String]
-
-    var body: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 8) {
-                chips
+        Form {
+            Section("Routine") {
+                TextField("Routine name", text: $routineTitle)
+                    .textInputAutocapitalization(.words)
             }
 
-            VStack(alignment: .leading, spacing: 8) {
-                chips
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var chips: some View {
-        ForEach(titles, id: \.self) { title in
-            TemplateBadge(title: title, tint: Color.accentColor)
-        }
-    }
-}
-
-private struct TemplateBadge: View {
-    let title: String
-    var systemImage: String? = nil
-    var tint: Color
-    var isSoft = true
-
-    var body: some View {
-        HStack(spacing: 6) {
-            if let systemImage {
-                Image(systemName: systemImage)
-                    .imageScale(.small)
-            }
-
-            Text(title)
-        }
-        .font(.footnote.weight(.medium))
-        .foregroundStyle(tint)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(
-            tint.opacity(isSoft ? 0.12 : 0.08),
-            in: Capsule()
-        )
-    }
-}
-
-#Preview("Templates Root") {
-    TemplatesRootView()
-        .environment(PreviewSupport.store(tab: .library))
-}
-
-#Preview("Templates Root - Choosing Today") {
-    TemplatesRootView()
-        .environment(
-            PreviewSupport.store(
-                tab: .library,
-                document: ThingStructDocument(
-                    savedTemplates: PreviewSupport.seededDocument().savedTemplates,
-                    weekdayRules: PreviewSupport.seededDocument().weekdayRules
+            Section {
+                DatePicker(
+                    "Start",
+                    selection: timeBinding(for: $startMinute),
+                    displayedComponents: .hourAndMinute
                 )
-            )
+                DatePicker(
+                    "End",
+                    selection: timeBinding(for: $endMinute),
+                    displayedComponents: .hourAndMinute
+                )
+            } header: {
+                Text("Schedule")
+            } footer: {
+                if !isScheduleValid {
+                    Text("Start time must be earlier than end time.")
+                        .foregroundStyle(.red)
+                }
+            }
+
+            Section("Block") {
+                TextField("Block title", text: $blockTitle)
+                TextField("Note (optional)", text: $note, axis: .vertical)
+                    .lineLimit(2 ... 6)
+            }
+
+            Section("Details") {
+                LabeledContent("Blocks", value: "1")
+                LabeledContent("Reminders", value: "None")
+                LabeledContent("Notes", value: note.isEmpty ? "Optional" : "Added")
+            }
+
+            Section("Actions") {
+                Button(mode == .create ? "Create Routine" : "Save Changes") {
+                    save()
+                }
+                .disabled(!canSave)
+
+                if case .edit = mode {
+                    Button("Delete Routine", role: .destructive) {
+                        isConfirmingDelete = true
+                    }
+                }
+            }
+        }
+        .navigationTitle(mode.title)
+        .navigationBarTitleDisplayMode(.inline)
+        .task(id: mode.routineID) {
+            loadRoutineIfNeeded()
+        }
+        .alert(
+            "Delete \(routineTitle)?",
+            isPresented: $isConfirmingDelete
+        ) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete", role: .destructive) {
+                deleteRoutine()
+            }
+        } message: {
+            Text("This removes the reusable definition. Today’s materialized routine is not changed.")
+        }
+    }
+
+    private func loadRoutineIfNeeded() {
+        guard !didLoad else { return }
+        didLoad = true
+        guard let id = mode.routineID, let routine = store.savedTemplate(id: id) else { return }
+
+        routineTitle = routine.title
+        guard let root = routine.blocks.first(where: {
+            $0.layerIndex == 0 && $0.parentTemplateBlockID == nil
+        }) else { return }
+
+        blockTitle = root.title
+        note = root.note ?? ""
+        if case let .absolute(start, requestedEnd) = root.timing {
+            startMinute = start
+            endMinute = requestedEnd ?? min(24 * 60 - 1, start + 60)
+        }
+    }
+
+    private func save() {
+        do {
+            switch mode {
+            case .create:
+                _ = try store.createRoutine(
+                    title: routineTitle,
+                    blockTitle: blockTitle,
+                    note: note,
+                    startMinuteOfDay: startMinute,
+                    endMinuteOfDay: endMinute
+                )
+            case let .edit(id):
+                try store.updateRoutine(
+                    id: id,
+                    title: routineTitle,
+                    blockTitle: blockTitle,
+                    note: note,
+                    startMinuteOfDay: startMinute,
+                    endMinuteOfDay: endMinute
+                )
+            }
+            dismiss()
+        } catch {
+            store.presentError(error)
+        }
+    }
+
+    private func deleteRoutine() {
+        guard let id = mode.routineID else { return }
+        do {
+            try store.deleteRoutine(id: id)
+            dismiss()
+        } catch {
+            store.presentError(error)
+        }
+    }
+
+    private func timeBinding(for minute: Binding<Int>) -> Binding<Date> {
+        Binding(
+            get: { date(for: minute.wrappedValue) },
+            set: { minute.wrappedValue = $0.minuteOfDay }
         )
+    }
+
+    private func date(for minute: Int) -> Date {
+        let calendar = Calendar.current
+        let start = calendar.startOfDay(for: .now)
+        return calendar.date(byAdding: .minute, value: minute, to: start) ?? start
+    }
+}
+
+#Preview("Routines") {
+    NavigationStack {
+        RoutinesRootView()
+    }
+    .environment(PreviewSupport.store(tab: .library))
+}
+
+#Preview("New Routine") {
+    NavigationStack {
+        RoutineEditorView(mode: .create)
+    }
+    .environment(PreviewSupport.store(tab: .library))
 }

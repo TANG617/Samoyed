@@ -241,17 +241,20 @@ final class SystemSupportTests: XCTestCase {
 
         let firstSnapshot = try makeLiveActivitySnapshot(document: document, day: day, minuteOfDay: 600)
         XCTAssertEqual(firstSnapshot.displayTask?.taskID, overlayTaskAID)
+        XCTAssertEqual(firstSnapshot.displayTasks.map(\.taskID), [overlayTaskAID, overlayTaskBID])
 
         XCTAssertTrue(try repository.completeTask(on: day, blockID: overlayID, taskID: overlayTaskAID, completedAt: referenceDate, in: &document))
 
         let secondSnapshot = try makeLiveActivitySnapshot(document: document, day: day, minuteOfDay: 600)
         XCTAssertEqual(secondSnapshot.displayTask?.taskID, overlayTaskBID)
+        XCTAssertEqual(secondSnapshot.displayTasks.map(\.taskID), [overlayTaskBID])
         XCTAssertEqual(secondSnapshot.displayBlock?.blockID, overlayID)
 
         XCTAssertTrue(try repository.completeTask(on: day, blockID: overlayID, taskID: overlayTaskBID, completedAt: referenceDate, in: &document))
 
         let thirdSnapshot = try makeLiveActivitySnapshot(document: document, day: day, minuteOfDay: 600)
         XCTAssertEqual(thirdSnapshot.displayTask?.taskID, baseTaskID)
+        XCTAssertEqual(thirdSnapshot.displayTasks.map(\.taskID), [baseTaskID])
         XCTAssertEqual(thirdSnapshot.displayBlock?.blockID, baseID)
         XCTAssertEqual(thirdSnapshot.displayNote, "Base note")
 
