@@ -1,0 +1,4 @@
+interface:
+  display_name: "Samoyed 日程编排"
+  short_description: "访谈整理日程，生成、校验并导入 Routine 配置"
+  default_prompt: "使用 $samoyed-routine 询问我的每日安排，生成有效配置并导入 Samoyed。"
