@@ -66,10 +66,10 @@ jobs:
               -showBuildSettings
           )"
 
-          app_bundle_id="$(awk '/PRODUCT_BUNDLE_IDENTIFIER =/ { print $3; exit }' <<< "$app_settings")"
-          widget_bundle_id="$(awk '/PRODUCT_BUNDLE_IDENTIFIER =/ { print $3; exit }' <<< "$widget_settings")"
-          app_group_id="$(awk '/SAMOYED_APP_GROUP_ID =/ { print $3; exit }' <<< "$app_settings")"
-          widget_app_group_id="$(awk '/SAMOYED_APP_GROUP_ID =/ { print $3; exit }' <<< "$widget_settings")"
+          app_bundle_id="$(awk '$1 == "PRODUCT_BUNDLE_IDENTIFIER" && $2 == "=" { print $3; exit }' <<< "$app_settings")"
+          widget_bundle_id="$(awk '$1 == "PRODUCT_BUNDLE_IDENTIFIER" && $2 == "=" { print $3; exit }' <<< "$widget_settings")"
+          app_group_id="$(awk '$1 == "SAMOYED_APP_GROUP_ID" && $2 == "=" { print $3; exit }' <<< "$app_settings")"
+          widget_app_group_id="$(awk '$1 == "SAMOYED_APP_GROUP_ID" && $2 == "=" { print $3; exit }' <<< "$widget_settings")"
 
           if [[ -z "$app_bundle_id" || -z "$widget_bundle_id" || -z "$app_group_id" ]]; then
             echo "::error::Xcode did not resolve all Apple deployment identities."
@@ -146,7 +146,7 @@ jobs:
                 -showBuildSettings
             )"
             marketing_version="$(
-              awk '/MARKETING_VERSION =/ { print $3; exit }' <<< "$build_settings"
+              awk '$1 == "MARKETING_VERSION" && $2 == "=" { print $3; exit }' <<< "$build_settings"
             )"
           fi
 

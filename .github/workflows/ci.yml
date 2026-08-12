@@ -79,9 +79,9 @@ jobs:
 
           app_settings="$(xcodebuild -project Samoyed.xcodeproj -target Samoyed -configuration Release -showBuildSettings)"
           widget_settings="$(xcodebuild -project Samoyed.xcodeproj -target SamoyedWidgetExtension -configuration Release -showBuildSettings)"
-          app_bundle_id="$(awk '/PRODUCT_BUNDLE_IDENTIFIER =/ { print $3; exit }' <<< "$app_settings")"
-          widget_bundle_id="$(awk '/PRODUCT_BUNDLE_IDENTIFIER =/ { print $3; exit }' <<< "$widget_settings")"
-          app_group_id="$(awk '/SAMOYED_APP_GROUP_ID =/ { print $3; exit }' <<< "$app_settings")"
+          app_bundle_id="$(awk '$1 == "PRODUCT_BUNDLE_IDENTIFIER" && $2 == "=" { print $3; exit }' <<< "$app_settings")"
+          widget_bundle_id="$(awk '$1 == "PRODUCT_BUNDLE_IDENTIFIER" && $2 == "=" { print $3; exit }' <<< "$widget_settings")"
+          app_group_id="$(awk '$1 == "SAMOYED_APP_GROUP_ID" && $2 == "=" { print $3; exit }' <<< "$app_settings")"
 
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "$app_info")" = "Samoyed"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "$widget_info")" = "Samoyed"
