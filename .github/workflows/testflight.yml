@@ -343,20 +343,24 @@ jobs:
           security cms -D -i "$widget_path/embedded.mobileprovision" > "$widget_profile"
           test "$(/usr/libexec/PlistBuddy -c 'Print :Name' "$app_profile")" = "$EXPECTED_APP_PROFILE_NAME"
           test "$(/usr/libexec/PlistBuddy -c 'Print :Name' "$widget_profile")" = "$EXPECTED_WIDGET_PROFILE_NAME"
-          plutil -convert json -o "$RUNNER_TEMP/app-profile.json" "$app_profile"
-          plutil -convert json -o "$RUNNER_TEMP/widget-profile.json" "$widget_profile"
+          plutil -extract Entitlements json -expect dictionary \
+            -o "$RUNNER_TEMP/app-profile-entitlements.json" \
+            "$app_profile"
+          plutil -extract Entitlements json -expect dictionary \
+            -o "$RUNNER_TEMP/widget-profile-entitlements.json" \
+            "$widget_profile"
           jq -e \
             --arg application_identifier "$APPLE_TEAM_ID.$APP_BUNDLE_ID" \
             --arg team_identifier "$APPLE_TEAM_ID" \
             --arg group "$APP_GROUP_ID" \
-            '.Entitlements["application-identifier"] == $application_identifier and .Entitlements["com.apple.developer.team-identifier"] == $team_identifier and .Entitlements["com.apple.security.application-groups"] == [$group]' \
-            "$RUNNER_TEMP/app-profile.json"
+            '."application-identifier" == $application_identifier and ."com.apple.developer.team-identifier" == $team_identifier and ."com.apple.security.application-groups" == [$group]' \
+            "$RUNNER_TEMP/app-profile-entitlements.json"
           jq -e \
             --arg application_identifier "$APPLE_TEAM_ID.$WIDGET_BUNDLE_ID" \
             --arg team_identifier "$APPLE_TEAM_ID" \
             --arg group "$APP_GROUP_ID" \
-            '.Entitlements["application-identifier"] == $application_identifier and .Entitlements["com.apple.developer.team-identifier"] == $team_identifier and .Entitlements["com.apple.security.application-groups"] == [$group]' \
-            "$RUNNER_TEMP/widget-profile.json"
+            '."application-identifier" == $application_identifier and ."com.apple.developer.team-identifier" == $team_identifier and ."com.apple.security.application-groups" == [$group]' \
+            "$RUNNER_TEMP/widget-profile-entitlements.json"
 
           test -f "$app_path/PrivacyInfo.xcprivacy"
           test -f "$widget_path/PrivacyInfo.xcprivacy"
