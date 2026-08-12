@@ -19,16 +19,15 @@ permissions:
   contents: read
 
 concurrency:
-  group: thingstruct-testflight
+  group: samoyed-testflight
   cancel-in-progress: false
 
 env:
-  XCODE_PROJECT: ThingStruct.xcodeproj
-  XCODE_SCHEME: ThingStruct
+  XCODE_PROJECT: Samoyed.xcodeproj
+  XCODE_SCHEME: Samoyed
+  APP_TARGET: Samoyed
+  WIDGET_TARGET: SamoyedWidgetExtension
   APPLE_TEAM_ID: PRTA2MGMQH
-  APP_BUNDLE_ID: tang.ThingStruct
-  WIDGET_BUNDLE_ID: tang.ThingStruct.WidgetExtension
-  APP_GROUP_ID: group.tang.ThingStruct
 
 jobs:
   publish:
@@ -45,6 +44,52 @@ jobs:
 
       - name: Record Xcode version
         run: xcodebuild -version
+
+      - name: Resolve Apple deployment identities from Xcode
+        id: identity
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          app_settings="$(
+            xcodebuild \
+              -project "$XCODE_PROJECT" \
+              -target "$APP_TARGET" \
+              -configuration Release \
+              -showBuildSettings
+          )"
+          widget_settings="$(
+            xcodebuild \
+              -project "$XCODE_PROJECT" \
+              -target "$WIDGET_TARGET" \
+              -configuration Release \
+              -showBuildSettings
+          )"
+
+          app_bundle_id="$(awk '/PRODUCT_BUNDLE_IDENTIFIER =/ { print $3; exit }' <<< "$app_settings")"
+          widget_bundle_id="$(awk '/PRODUCT_BUNDLE_IDENTIFIER =/ { print $3; exit }' <<< "$widget_settings")"
+          app_group_id="$(awk '/SAMOYED_APP_GROUP_ID =/ { print $3; exit }' <<< "$app_settings")"
+          widget_app_group_id="$(awk '/SAMOYED_APP_GROUP_ID =/ { print $3; exit }' <<< "$widget_settings")"
+
+          if [[ -z "$app_bundle_id" || -z "$widget_bundle_id" || -z "$app_group_id" ]]; then
+            echo "::error::Xcode did not resolve all Apple deployment identities."
+            exit 1
+          fi
+          if [[ "$app_group_id" != "$widget_app_group_id" ]]; then
+            echo "::error::App and widget resolved different App Group identifiers."
+            exit 1
+          fi
+
+          {
+            echo "app_bundle_id=$app_bundle_id"
+            echo "widget_bundle_id=$widget_bundle_id"
+            echo "app_group_id=$app_group_id"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "APP_BUNDLE_ID=$app_bundle_id"
+            echo "WIDGET_BUNDLE_ID=$widget_bundle_id"
+            echo "APP_GROUP_ID=$app_group_id"
+          } >> "$GITHUB_ENV"
 
       - name: Verify TestFlight credentials are configured
         shell: bash
@@ -115,7 +160,7 @@ jobs:
 
           echo "marketing_version=$marketing_version" >> "$GITHUB_OUTPUT"
           echo "build_number=$build_number" >> "$GITHUB_OUTPUT"
-          echo "Publishing ThingStruct $marketing_version ($build_number)"
+          echo "Publishing Samoyed $marketing_version ($build_number)"
 
       - name: Import Apple Distribution certificate
         uses: apple-actions/import-codesign-certs@5142e029c445c10ffc7149d172e540235a065466 # v7.0.0
@@ -149,19 +194,17 @@ jobs:
         env:
           APP_PROFILES_JSON: ${{ steps.app_profiles.outputs.profiles }}
           WIDGET_PROFILES_JSON: ${{ steps.widget_profiles.outputs.profiles }}
-          EXPECTED_APP_PROFILE_NAME: ThingStruct App Store CI
-          EXPECTED_WIDGET_PROFILE_NAME: ThingStruct Widget App Store CI
         run: |
           set -euo pipefail
 
           app_profile_name="$(
-            jq -er --arg expected "$EXPECTED_APP_PROFILE_NAME" \
-              'map(select(.type == "IOS_APP_STORE" and .name == $expected)) | first | .name' \
+            jq -er \
+              'map(select(.type == "IOS_APP_STORE")) | if length == 1 then .[0].name else error("Expected exactly one app profile") end' \
               <<< "$APP_PROFILES_JSON"
           )"
           widget_profile_name="$(
-            jq -er --arg expected "$EXPECTED_WIDGET_PROFILE_NAME" \
-              'map(select(.type == "IOS_APP_STORE" and .name == $expected)) | first | .name' \
+            jq -er \
+              'map(select(.type == "IOS_APP_STORE")) | if length == 1 then .[0].name else error("Expected exactly one widget profile") end' \
               <<< "$WIDGET_PROFILES_JSON"
           )"
 
@@ -183,12 +226,13 @@ jobs:
             -scheme "$XCODE_SCHEME" \
             -configuration Release \
             -destination "generic/platform=iOS" \
-            -archivePath "$RUNNER_TEMP/ThingStruct.xcarchive" \
+            -archivePath "$RUNNER_TEMP/Samoyed.xcarchive" \
+            -derivedDataPath "$RUNNER_TEMP/Samoyed-DerivedData" \
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="Apple Distribution" \
-            "THINGSTRUCT_APP_PROVISIONING_PROFILE=$APP_PROFILE_NAME" \
-            "THINGSTRUCT_WIDGET_PROVISIONING_PROFILE=$WIDGET_PROFILE_NAME" \
+            "SAMOYED_APP_PROVISIONING_PROFILE=$APP_PROFILE_NAME" \
+            "SAMOYED_WIDGET_PROVISIONING_PROFILE=$WIDGET_PROFILE_NAME" \
             MARKETING_VERSION="$MARKETING_VERSION" \
             CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
             clean archive
@@ -215,7 +259,7 @@ jobs:
 
           xcodebuild \
             -exportArchive \
-            -archivePath "$RUNNER_TEMP/ThingStruct.xcarchive" \
+            -archivePath "$RUNNER_TEMP/Samoyed.xcarchive" \
             -exportPath "$export_path" \
             -exportOptionsPlist "$export_options"
 
@@ -235,8 +279,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          app_path="$RUNNER_TEMP/ThingStruct.xcarchive/Products/Applications/ThingStruct.app"
-          widget_path="$app_path/PlugIns/ThingStructWidgetExtension.appex"
+          app_path="$RUNNER_TEMP/Samoyed.xcarchive/Products/Applications/Samoyed.app"
+          widget_path="$app_path/PlugIns/SamoyedWidgetExtension.appex"
           app_info="$app_path/Info.plist"
           widget_info="$widget_path/Info.plist"
 
@@ -245,6 +289,10 @@ jobs:
 
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app_info")" = "$APP_BUNDLE_ID"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$widget_info")" = "$WIDGET_BUNDLE_ID"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "$app_info")" = "Samoyed"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "$widget_info")" = "Samoyed"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :SamoyedAppGroupIdentifier' "$app_info")" = "$APP_GROUP_ID"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :SamoyedAppGroupIdentifier' "$widget_info")" = "$APP_GROUP_ID"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app_info")" = "$EXPECTED_MARKETING_VERSION"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$widget_info")" = "$EXPECTED_MARKETING_VERSION"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$app_info")" = "$EXPECTED_BUILD_NUMBER"
@@ -254,6 +302,10 @@ jobs:
           codesign -d --entitlements :- "$widget_path" > "$RUNNER_TEMP/widget-entitlements.plist" 2>/dev/null
           plutil -p "$RUNNER_TEMP/app-entitlements.plist" | grep -F "$APP_GROUP_ID"
           plutil -p "$RUNNER_TEMP/widget-entitlements.plist" | grep -F "$APP_GROUP_ID"
+          test -f "$app_path/PrivacyInfo.xcprivacy"
+          test -f "$widget_path/PrivacyInfo.xcprivacy"
+          plutil -lint "$app_path/PrivacyInfo.xcprivacy"
+          plutil -lint "$widget_path/PrivacyInfo.xcprivacy"
 
       - name: Upload build to TestFlight
         uses: apple-actions/upload-testflight-build@1ad58030672057aa084b4e96beb6f7a8c627f9e6 # v5.2.1

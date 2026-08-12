@@ -28,6 +28,12 @@ jobs:
           xcodebuild -version
           swift --version
 
+      - name: Verify brand cleanliness
+        run: bash scripts/verify_brand_cleanliness.sh
+
+      - name: Describe core package
+        run: swift package describe
+
       - name: Run core tests
         run: swift test
 
@@ -48,23 +54,42 @@ jobs:
         run: |
           set -o pipefail
           xcodebuild \
-            -project ThingStruct.xcodeproj \
-            -scheme ThingStruct \
+            -project Samoyed.xcodeproj \
+            -scheme Samoyed \
             -configuration Release \
             -destination 'generic/platform=iOS' \
-            -archivePath "$RUNNER_TEMP/ThingStruct.xcarchive" \
-            -derivedDataPath "$RUNNER_TEMP/ThingStruct-DerivedData" \
+            -archivePath "$RUNNER_TEMP/Samoyed.xcarchive" \
+            -derivedDataPath "$RUNNER_TEMP/Samoyed-DerivedData" \
             CODE_SIGNING_ALLOWED=NO \
-            archive
+            clean archive
 
       - name: Verify archive contents and privacy manifests
         run: |
           set -euo pipefail
-          app_path="$RUNNER_TEMP/ThingStruct.xcarchive/Products/Applications/ThingStruct.app"
-          widget_path="$app_path/PlugIns/ThingStructWidgetExtension.appex"
+          app_path="$RUNNER_TEMP/Samoyed.xcarchive/Products/Applications/Samoyed.app"
+          widget_path="$app_path/PlugIns/SamoyedWidgetExtension.appex"
+          app_info="$app_path/Info.plist"
+          widget_info="$widget_path/Info.plist"
           test -d "$app_path"
           test -d "$widget_path"
           test -f "$app_path/PrivacyInfo.xcprivacy"
           test -f "$widget_path/PrivacyInfo.xcprivacy"
           plutil -lint "$app_path/PrivacyInfo.xcprivacy"
           plutil -lint "$widget_path/PrivacyInfo.xcprivacy"
+
+          app_settings="$(xcodebuild -project Samoyed.xcodeproj -target Samoyed -configuration Release -showBuildSettings)"
+          widget_settings="$(xcodebuild -project Samoyed.xcodeproj -target SamoyedWidgetExtension -configuration Release -showBuildSettings)"
+          app_bundle_id="$(awk '/PRODUCT_BUNDLE_IDENTIFIER =/ { print $3; exit }' <<< "$app_settings")"
+          widget_bundle_id="$(awk '/PRODUCT_BUNDLE_IDENTIFIER =/ { print $3; exit }' <<< "$widget_settings")"
+          app_group_id="$(awk '/SAMOYED_APP_GROUP_ID =/ { print $3; exit }' <<< "$app_settings")"
+
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "$app_info")" = "Samoyed"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "$widget_info")" = "Samoyed"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app_info")" = "$app_bundle_id"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$widget_info")" = "$widget_bundle_id"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :SamoyedAppGroupIdentifier' "$app_info")" = "$app_group_id"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :SamoyedAppGroupIdentifier' "$widget_info")" = "$app_group_id"
+
+          schemes="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleURLTypes:0:CFBundleURLSchemes' "$app_info" | awk '/^[[:space:]]+[[:alnum:]]/ { print $1 }')"
+          test "$(wc -l <<< "$schemes" | tr -d ' ')" -eq 1
+          test "$schemes" = "samoyed"
