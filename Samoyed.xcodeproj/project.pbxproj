@@ -1,0 +1,699 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		B10000012EF3000000A74A6B /* SamoyedWidgetExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = B10000022EF3000000A74A6B /* SamoyedWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		U10000012F00000000A74A6B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 276619522EF2562D00A74A6B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 276619592EF2562D00A74A6B;
+			remoteInfo = Samoyed;
+		};
+		B100000A2EF3000000A74A6B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 276619522EF2562D00A74A6B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B100000B2EF3000000A74A6B;
+			remoteInfo = SamoyedWidgetExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		B10000072EF3000000A74A6B /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				B10000012EF3000000A74A6B /* SamoyedWidgetExtension.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		2735FB492F6B9E8500E0B4AD /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		2766195A2EF2562D00A74A6B /* Samoyed.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Samoyed.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		9A4D4F3A1B2C3D4E5F607182 /* Design.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = Design.md; sourceTree = "<group>"; };
+		B10000022EF3000000A74A6B /* SamoyedWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SamoyedWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		C00000012F80000000A74A6B /* AppleIdentity.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = AppleIdentity.xcconfig; sourceTree = "<group>"; };
+		U10000022F00000000A74A6B /* SamoyedUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SamoyedUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		276619672EF2562F00A74A6B /* Exceptions for "Samoyed" folder in "Samoyed" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 276619592EF2562D00A74A6B /* Samoyed */;
+		};
+		B10000032EF3000000A74A6B /* Exceptions for "SamoyedWidgetExtension" folder in "SamoyedWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = B100000B2EF3000000A74A6B /* SamoyedWidgetExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		2766195C2EF2562D00A74A6B /* Samoyed */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				276619672EF2562F00A74A6B /* Exceptions for "Samoyed" folder in "Samoyed" target */,
+			);
+			path = Samoyed;
+			sourceTree = "<group>";
+		};
+		9A4D4F3A1B2C3D4E5F607181 /* Tests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Tests;
+			sourceTree = "<group>";
+		};
+		B10000042EF3000000A74A6B /* Samoyed/CoreShared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Samoyed/CoreShared;
+			sourceTree = "<group>";
+		};
+		B10000052EF3000000A74A6B /* SamoyedWidgetExtension */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				B10000032EF3000000A74A6B /* Exceptions for "SamoyedWidgetExtension" folder in "SamoyedWidgetExtension" target */,
+			);
+			path = SamoyedWidgetExtension;
+			sourceTree = "<group>";
+		};
+		U10000032F00000000A74A6B /* SamoyedUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = SamoyedUITests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		276619572EF2562D00A74A6B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B10000062EF3000000A74A6B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		U10000042F00000000A74A6B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		276619512EF2562D00A74A6B = {
+			isa = PBXGroup;
+			children = (
+				2735FB492F6B9E8500E0B4AD /* README.md */,
+				9A4D4F3A1B2C3D4E5F607182 /* Design.md */,
+				C00000022F80000000A74A6B /* Config */,
+				2766195C2EF2562D00A74A6B /* Samoyed */,
+				B10000042EF3000000A74A6B /* Samoyed/CoreShared */,
+				B10000052EF3000000A74A6B /* SamoyedWidgetExtension */,
+				9A4D4F3A1B2C3D4E5F607181 /* Tests */,
+				U10000032F00000000A74A6B /* SamoyedUITests */,
+				2766195B2EF2562D00A74A6B /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		2766195B2EF2562D00A74A6B /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				2766195A2EF2562D00A74A6B /* Samoyed.app */,
+				B10000022EF3000000A74A6B /* SamoyedWidgetExtension.appex */,
+				U10000022F00000000A74A6B /* SamoyedUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		C00000022F80000000A74A6B /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				C00000012F80000000A74A6B /* AppleIdentity.xcconfig */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		276619592EF2562D00A74A6B /* Samoyed */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 276619682EF2562F00A74A6B /* Build configuration list for PBXNativeTarget "Samoyed" */;
+			buildPhases = (
+				276619562EF2562D00A74A6B /* Sources */,
+				276619572EF2562D00A74A6B /* Frameworks */,
+				276619582EF2562D00A74A6B /* Resources */,
+				B10000072EF3000000A74A6B /* Embed App Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				B100000C2EF3000000A74A6B /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				2766195C2EF2562D00A74A6B /* Samoyed */,
+			);
+			name = Samoyed;
+			packageProductDependencies = (
+			);
+			productName = Samoyed;
+			productReference = 2766195A2EF2562D00A74A6B /* Samoyed.app */;
+			productType = "com.apple.product-type.application";
+		};
+		B100000B2EF3000000A74A6B /* SamoyedWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B100000D2EF3000000A74A6B /* Build configuration list for PBXNativeTarget "SamoyedWidgetExtension" */;
+			buildPhases = (
+				B10000082EF3000000A74A6B /* Sources */,
+				B10000062EF3000000A74A6B /* Frameworks */,
+				B10000092EF3000000A74A6B /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				B10000042EF3000000A74A6B /* Samoyed/CoreShared */,
+				B10000052EF3000000A74A6B /* SamoyedWidgetExtension */,
+			);
+			name = SamoyedWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = SamoyedWidgetExtension;
+			productReference = B10000022EF3000000A74A6B /* SamoyedWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		U10000052F00000000A74A6B /* SamoyedUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = U100000B2F00000000A74A6B /* Build configuration list for PBXNativeTarget "SamoyedUITests" */;
+			buildPhases = (
+				U10000062F00000000A74A6B /* Sources */,
+				U10000042F00000000A74A6B /* Frameworks */,
+				U10000072F00000000A74A6B /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				U10000092F00000000A74A6B /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				U10000032F00000000A74A6B /* SamoyedUITests */,
+			);
+			name = SamoyedUITests;
+			packageProductDependencies = (
+			);
+			productName = SamoyedUITests;
+			productReference = U10000022F00000000A74A6B /* SamoyedUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		276619522EF2562D00A74A6B /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2610;
+				LastUpgradeCheck = 2620;
+				TargetAttributes = {
+					276619592EF2562D00A74A6B = {
+						CreatedOnToolsVersion = 26.1.1;
+					};
+					B100000B2EF3000000A74A6B = {
+						CreatedOnToolsVersion = 26.1.1;
+					};
+					U10000052F00000000A74A6B = {
+						CreatedOnToolsVersion = 26.1.1;
+						TestTargetID = 276619592EF2562D00A74A6B;
+					};
+				};
+			};
+			buildConfigurationList = 276619552EF2562D00A74A6B /* Build configuration list for PBXProject "Samoyed" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 276619512EF2562D00A74A6B;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 2766195B2EF2562D00A74A6B /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				276619592EF2562D00A74A6B /* Samoyed */,
+				B100000B2EF3000000A74A6B /* SamoyedWidgetExtension */,
+				U10000052F00000000A74A6B /* SamoyedUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		276619582EF2562D00A74A6B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B10000092EF3000000A74A6B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		U10000072F00000000A74A6B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		276619562EF2562D00A74A6B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B10000082EF3000000A74A6B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		U10000062F00000000A74A6B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		B100000C2EF3000000A74A6B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B100000B2EF3000000A74A6B /* SamoyedWidgetExtension */;
+			targetProxy = B100000A2EF3000000A74A6B /* PBXContainerItemProxy */;
+		};
+		U10000092F00000000A74A6B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 276619592EF2562D00A74A6B /* Samoyed */;
+			targetProxy = U10000012F00000000A74A6B /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		276619692EF2562F00A74A6B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = C00000012F80000000A74A6B /* AppleIdentity.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = Samoyed;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
+				CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION = YES;
+				CODE_SIGN_ENTITLEMENTS = Samoyed/Samoyed.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = PRTA2MGMQH;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Samoyed/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Samoyed;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(SAMOYED_APP_BUNDLE_ID)";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		2766196A2EF2562F00A74A6B /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = C00000012F80000000A74A6B /* AppleIdentity.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = Samoyed;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
+				CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION = NO;
+				CODE_SIGN_ENTITLEMENTS = Samoyed/Samoyed.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = PRTA2MGMQH;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Samoyed/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Samoyed;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(SAMOYED_APP_BUNDLE_ID)";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "$(SAMOYED_APP_PROVISIONING_PROFILE)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		2766196B2EF2562F00A74A6B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = PRTA2MGMQH;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		2766196C2EF2562F00A74A6B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = PRTA2MGMQH;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		B100000E2EF3000000A74A6B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = C00000012F80000000A74A6B /* AppleIdentity.xcconfig */;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION = YES;
+				CODE_SIGN_ENTITLEMENTS = SamoyedWidgetExtension/SamoyedWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = PRTA2MGMQH;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = SamoyedWidgetExtension/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(SAMOYED_WIDGET_BUNDLE_ID)";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		B100000F2EF3000000A74A6B /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = C00000012F80000000A74A6B /* AppleIdentity.xcconfig */;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION = NO;
+				CODE_SIGN_ENTITLEMENTS = SamoyedWidgetExtension/SamoyedWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = PRTA2MGMQH;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = SamoyedWidgetExtension/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(SAMOYED_WIDGET_BUNDLE_ID)";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "$(SAMOYED_WIDGET_PROVISIONING_PROFILE)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		U100000A2F00000000A74A6B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = PRTA2MGMQH;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 0.3;
+				PRODUCT_BUNDLE_IDENTIFIER = tang.SamoyedUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = Samoyed;
+			};
+			name = Debug;
+		};
+		U100000C2F00000000A74A6B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = PRTA2MGMQH;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 0.3;
+				PRODUCT_BUNDLE_IDENTIFIER = tang.SamoyedUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = Samoyed;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		276619552EF2562D00A74A6B /* Build configuration list for PBXProject "Samoyed" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2766196B2EF2562F00A74A6B /* Debug */,
+				2766196C2EF2562F00A74A6B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		276619682EF2562F00A74A6B /* Build configuration list for PBXNativeTarget "Samoyed" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				276619692EF2562F00A74A6B /* Debug */,
+				2766196A2EF2562F00A74A6B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B100000D2EF3000000A74A6B /* Build configuration list for PBXNativeTarget "SamoyedWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B100000E2EF3000000A74A6B /* Debug */,
+				B100000F2EF3000000A74A6B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		U100000B2F00000000A74A6B /* Build configuration list for PBXNativeTarget "SamoyedUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				U100000A2F00000000A74A6B /* Debug */,
+				U100000C2F00000000A74A6B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 276619522EF2562D00A74A6B /* Project object */;
+}

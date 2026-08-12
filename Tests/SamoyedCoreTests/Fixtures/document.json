@@ -1,0 +1,97 @@
+{
+  "dayPlans": [
+    {
+      "id": "00000000-0000-0000-0000-000000000001",
+      "date": { "year": 2026, "month": 8, "day": 12 },
+      "sourceSavedTemplateID": "00000000-0000-0000-0000-000000000010",
+      "lastGeneratedAt": 0,
+      "hasUserEdits": true,
+      "blocks": [
+        {
+          "id": "00000000-0000-0000-0000-000000000002",
+          "dayPlanID": "00000000-0000-0000-0000-000000000001",
+          "layerIndex": 0,
+          "kind": "userDefined",
+          "title": "Morning",
+          "note": "Start gently.",
+          "reminders": [
+            {
+              "id": "00000000-0000-0000-0000-000000000003",
+              "triggerMode": "beforeStart",
+              "offsetMinutes": 10
+            }
+          ],
+          "tasks": [
+            {
+              "id": "00000000-0000-0000-0000-000000000004",
+              "title": "Drink water",
+              "order": 0,
+              "isCompleted": true,
+              "completedAt": 0
+            }
+          ],
+          "timing": {
+            "absolute": {
+              "startMinuteOfDay": 480,
+              "requestedEndMinuteOfDay": 720
+            }
+          },
+          "resolvedStartMinuteOfDay": 480,
+          "resolvedEndMinuteOfDay": 720,
+          "isCancelled": false
+        }
+      ]
+    }
+  ],
+  "savedTemplates": [
+    {
+      "id": "00000000-0000-0000-0000-000000000010",
+      "title": "Workday",
+      "sourceSuggestedTemplateID": "00000000-0000-0000-0000-000000000011",
+      "blocks": [
+        {
+          "id": "00000000-0000-0000-0000-000000000012",
+          "layerIndex": 0,
+          "title": "Morning",
+          "note": "Start gently.",
+          "reminders": [],
+          "taskBlueprints": [
+            {
+              "id": "00000000-0000-0000-0000-000000000013",
+              "title": "Drink water",
+              "order": 0
+            }
+          ],
+          "timing": {
+            "absolute": {
+              "startMinuteOfDay": 480,
+              "requestedEndMinuteOfDay": 720
+            }
+          }
+        }
+      ],
+      "createdAt": 0,
+      "updatedAt": 0
+    }
+  ],
+  "weekdayRules": [
+    {
+      "weekday": 4,
+      "savedTemplateID": "00000000-0000-0000-0000-000000000010"
+    }
+  ],
+  "overrides": [
+    {
+      "date": { "year": 2026, "month": 8, "day": 13 },
+      "savedTemplateID": "00000000-0000-0000-0000-000000000010"
+    }
+  ],
+  "daySelections": [
+    {
+      "date": { "year": 2026, "month": 8, "day": 12 },
+      "selectedTemplateID": "00000000-0000-0000-0000-000000000010",
+      "source": "pickedTemplate",
+      "selectedAt": 0
+    }
+  ]
+}

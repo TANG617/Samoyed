@@ -1,4 +1,4 @@
-# ThingStruct Design Audit Notes
+# Samoyed Design Audit Notes
 
 审阅日期：2026-06-12
 
@@ -167,7 +167,7 @@ PRD 定义 Library 优先回答“我有哪些生活模板、今天和明天要�
 
 ### 9. Widget 任务排序和产品焦点冲突
 
-`ThingStructWidgetSupport.prioritizedTasks` 的注释明确说明当前排序会把已完成任务排在前面。Widget 空间有限，这会直接损害“未完成 checklist 是焦点”的目标。
+`SamoyedWidgetSupport.prioritizedTasks` 的注释明确说明当前排序会把已完成任务排在前面。Widget 空间有限，这会直接损害“未完成 checklist 是焦点”的目标。
 
 影响：
 

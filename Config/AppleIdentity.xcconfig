@@ -1,0 +1,3 @@
+SAMOYED_APP_BUNDLE_ID = tang.ThingStruct
+SAMOYED_WIDGET_BUNDLE_ID = tang.ThingStruct.WidgetExtension
+SAMOYED_APP_GROUP_ID = group.tang.ThingStruct

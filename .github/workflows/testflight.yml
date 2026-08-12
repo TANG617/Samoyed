@@ -19,16 +19,15 @@ permissions:
   contents: read
 
 concurrency:
-  group: thingstruct-testflight
+  group: samoyed-testflight
   cancel-in-progress: false
 
 env:
-  XCODE_PROJECT: ThingStruct.xcodeproj
-  XCODE_SCHEME: ThingStruct
+  XCODE_PROJECT: Samoyed.xcodeproj
+  XCODE_SCHEME: Samoyed
+  APP_TARGET: Samoyed
+  WIDGET_TARGET: SamoyedWidgetExtension
   APPLE_TEAM_ID: PRTA2MGMQH
-  APP_BUNDLE_ID: tang.ThingStruct
-  WIDGET_BUNDLE_ID: tang.ThingStruct.WidgetExtension
-  APP_GROUP_ID: group.tang.ThingStruct
 
 jobs:
   publish:
@@ -46,6 +45,52 @@ jobs:
       - name: Record Xcode version
         run: xcodebuild -version
 
+      - name: Resolve Apple deployment identities from Xcode
+        id: identity
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          app_settings="$(
+            xcodebuild \
+              -project "$XCODE_PROJECT" \
+              -target "$APP_TARGET" \
+              -configuration Release \
+              -showBuildSettings
+          )"
+          widget_settings="$(
+            xcodebuild \
+              -project "$XCODE_PROJECT" \
+              -target "$WIDGET_TARGET" \
+              -configuration Release \
+              -showBuildSettings
+          )"
+
+          app_bundle_id="$(awk '$1 == "PRODUCT_BUNDLE_IDENTIFIER" && $2 == "=" { print $3; exit }' <<< "$app_settings")"
+          widget_bundle_id="$(awk '$1 == "PRODUCT_BUNDLE_IDENTIFIER" && $2 == "=" { print $3; exit }' <<< "$widget_settings")"
+          app_group_id="$(awk '$1 == "SAMOYED_APP_GROUP_ID" && $2 == "=" { print $3; exit }' <<< "$app_settings")"
+          widget_app_group_id="$(awk '$1 == "SAMOYED_APP_GROUP_ID" && $2 == "=" { print $3; exit }' <<< "$widget_settings")"
+
+          if [[ -z "$app_bundle_id" || -z "$widget_bundle_id" || -z "$app_group_id" ]]; then
+            echo "::error::Xcode did not resolve all Apple deployment identities."
+            exit 1
+          fi
+          if [[ "$app_group_id" != "$widget_app_group_id" ]]; then
+            echo "::error::App and widget resolved different App Group identifiers."
+            exit 1
+          fi
+
+          {
+            echo "app_bundle_id=$app_bundle_id"
+            echo "widget_bundle_id=$widget_bundle_id"
+            echo "app_group_id=$app_group_id"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "APP_BUNDLE_ID=$app_bundle_id"
+            echo "WIDGET_BUNDLE_ID=$widget_bundle_id"
+            echo "APP_GROUP_ID=$app_group_id"
+          } >> "$GITHUB_ENV"
+
       - name: Verify TestFlight credentials are configured
         shell: bash
         env:
@@ -54,6 +99,8 @@ jobs:
           APPSTORE_API_PRIVATE_KEY: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
           APPSTORE_CERTIFICATES_FILE_BASE64: ${{ secrets.APPSTORE_CERTIFICATES_FILE_BASE64 }}
           APPSTORE_CERTIFICATES_PASSWORD: ${{ secrets.APPSTORE_CERTIFICATES_PASSWORD }}
+          APP_PROVISIONING_PROFILE_NAME: ${{ vars.SAMOYED_APP_PROVISIONING_PROFILE_NAME }}
+          WIDGET_PROVISIONING_PROFILE_NAME: ${{ vars.SAMOYED_WIDGET_PROVISIONING_PROFILE_NAME }}
         run: |
           set -euo pipefail
 
@@ -63,7 +110,9 @@ jobs:
             APPSTORE_ISSUER_ID \
             APPSTORE_API_PRIVATE_KEY \
             APPSTORE_CERTIFICATES_FILE_BASE64 \
-            APPSTORE_CERTIFICATES_PASSWORD
+            APPSTORE_CERTIFICATES_PASSWORD \
+            APP_PROVISIONING_PROFILE_NAME \
+            WIDGET_PROVISIONING_PROFILE_NAME
           do
             if [[ -z "${!variable_name}" ]]; then
               missing+=("$variable_name")
@@ -97,7 +146,7 @@ jobs:
                 -showBuildSettings
             )"
             marketing_version="$(
-              awk '/MARKETING_VERSION =/ { print $3; exit }' <<< "$build_settings"
+              awk '$1 == "MARKETING_VERSION" && $2 == "=" { print $3; exit }' <<< "$build_settings"
             )"
           fi
 
@@ -115,7 +164,7 @@ jobs:
 
           echo "marketing_version=$marketing_version" >> "$GITHUB_OUTPUT"
           echo "build_number=$build_number" >> "$GITHUB_OUTPUT"
-          echo "Publishing ThingStruct $marketing_version ($build_number)"
+          echo "Publishing Samoyed $marketing_version ($build_number)"
 
       - name: Import Apple Distribution certificate
         uses: apple-actions/import-codesign-certs@5142e029c445c10ffc7149d172e540235a065466 # v7.0.0
@@ -149,19 +198,21 @@ jobs:
         env:
           APP_PROFILES_JSON: ${{ steps.app_profiles.outputs.profiles }}
           WIDGET_PROFILES_JSON: ${{ steps.widget_profiles.outputs.profiles }}
-          EXPECTED_APP_PROFILE_NAME: ThingStruct App Store CI
-          EXPECTED_WIDGET_PROFILE_NAME: ThingStruct Widget App Store CI
+          EXPECTED_APP_PROFILE_NAME: ${{ vars.SAMOYED_APP_PROVISIONING_PROFILE_NAME }}
+          EXPECTED_WIDGET_PROFILE_NAME: ${{ vars.SAMOYED_WIDGET_PROVISIONING_PROFILE_NAME }}
         run: |
           set -euo pipefail
 
           app_profile_name="$(
-            jq -er --arg expected "$EXPECTED_APP_PROFILE_NAME" \
-              'map(select(.type == "IOS_APP_STORE" and .name == $expected)) | first | .name' \
+            jq -er \
+              --arg expected "$EXPECTED_APP_PROFILE_NAME" \
+              'map(select(.type == "IOS_APP_STORE" and .name == $expected)) | if length == 1 then .[0].name else error("Expected exactly one app profile with the configured name") end' \
               <<< "$APP_PROFILES_JSON"
           )"
           widget_profile_name="$(
-            jq -er --arg expected "$EXPECTED_WIDGET_PROFILE_NAME" \
-              'map(select(.type == "IOS_APP_STORE" and .name == $expected)) | first | .name' \
+            jq -er \
+              --arg expected "$EXPECTED_WIDGET_PROFILE_NAME" \
+              'map(select(.type == "IOS_APP_STORE" and .name == $expected)) | if length == 1 then .[0].name else error("Expected exactly one widget profile with the configured name") end' \
               <<< "$WIDGET_PROFILES_JSON"
           )"
 
@@ -183,12 +234,13 @@ jobs:
             -scheme "$XCODE_SCHEME" \
             -configuration Release \
             -destination "generic/platform=iOS" \
-            -archivePath "$RUNNER_TEMP/ThingStruct.xcarchive" \
+            -archivePath "$RUNNER_TEMP/Samoyed.xcarchive" \
+            -derivedDataPath "$RUNNER_TEMP/Samoyed-DerivedData" \
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="Apple Distribution" \
-            "THINGSTRUCT_APP_PROVISIONING_PROFILE=$APP_PROFILE_NAME" \
-            "THINGSTRUCT_WIDGET_PROVISIONING_PROFILE=$WIDGET_PROFILE_NAME" \
+            "SAMOYED_APP_PROVISIONING_PROFILE=$APP_PROFILE_NAME" \
+            "SAMOYED_WIDGET_PROVISIONING_PROFILE=$WIDGET_PROFILE_NAME" \
             MARKETING_VERSION="$MARKETING_VERSION" \
             CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
             clean archive
@@ -215,7 +267,7 @@ jobs:
 
           xcodebuild \
             -exportArchive \
-            -archivePath "$RUNNER_TEMP/ThingStruct.xcarchive" \
+            -archivePath "$RUNNER_TEMP/Samoyed.xcarchive" \
             -exportPath "$export_path" \
             -exportOptionsPlist "$export_options"
 
@@ -227,33 +279,89 @@ jobs:
 
           echo "ipa_path=$ipa_path" >> "$GITHUB_OUTPUT"
 
-      - name: Verify archive signature, metadata, and entitlements
+      - name: Verify exported IPA signature, metadata, profiles, and entitlements
         shell: bash
         env:
+          IPA_PATH: ${{ steps.export.outputs.ipa_path }}
+          EXPECTED_APP_PROFILE_NAME: ${{ steps.profiles.outputs.app_profile_name }}
+          EXPECTED_WIDGET_PROFILE_NAME: ${{ steps.profiles.outputs.widget_profile_name }}
           EXPECTED_MARKETING_VERSION: ${{ steps.release.outputs.marketing_version }}
           EXPECTED_BUILD_NUMBER: ${{ steps.release.outputs.build_number }}
         run: |
           set -euo pipefail
 
-          app_path="$RUNNER_TEMP/ThingStruct.xcarchive/Products/Applications/ThingStruct.app"
-          widget_path="$app_path/PlugIns/ThingStructWidgetExtension.appex"
+          ipa_root="$RUNNER_TEMP/VerifiedIPA"
+          mkdir "$ipa_root"
+          ditto -x -k "$IPA_PATH" "$ipa_root"
+
+          app_path="$ipa_root/Payload/Samoyed.app"
+          widget_path="$app_path/PlugIns/SamoyedWidgetExtension.appex"
           app_info="$app_path/Info.plist"
           widget_info="$widget_path/Info.plist"
+
+          test -d "$app_path"
+          test -d "$widget_path"
 
           codesign --verify --deep --strict --verbose=2 "$app_path"
           codesign --verify --strict --verbose=2 "$widget_path"
 
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app_info")" = "$APP_BUNDLE_ID"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$widget_info")" = "$WIDGET_BUNDLE_ID"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "$app_info")" = "Samoyed"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "$widget_info")" = "Samoyed"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :SamoyedAppGroupIdentifier' "$app_info")" = "$APP_GROUP_ID"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :SamoyedAppGroupIdentifier' "$widget_info")" = "$APP_GROUP_ID"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app_info")" = "$EXPECTED_MARKETING_VERSION"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$widget_info")" = "$EXPECTED_MARKETING_VERSION"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$app_info")" = "$EXPECTED_BUILD_NUMBER"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$widget_info")" = "$EXPECTED_BUILD_NUMBER"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconName' "$app_info")" = "Samoyed"
+          test -f "$app_path/Samoyed60x60@2x.png"
+          plutil -convert json -o - "$app_info" \
+            | jq -e '[.CFBundleURLTypes[]?.CFBundleURLSchemes[]?] == ["samoyed"]'
 
           codesign -d --entitlements :- "$app_path" > "$RUNNER_TEMP/app-entitlements.plist" 2>/dev/null
           codesign -d --entitlements :- "$widget_path" > "$RUNNER_TEMP/widget-entitlements.plist" 2>/dev/null
-          plutil -p "$RUNNER_TEMP/app-entitlements.plist" | grep -F "$APP_GROUP_ID"
-          plutil -p "$RUNNER_TEMP/widget-entitlements.plist" | grep -F "$APP_GROUP_ID"
+          plutil -convert json -o "$RUNNER_TEMP/app-entitlements.json" "$RUNNER_TEMP/app-entitlements.plist"
+          plutil -convert json -o "$RUNNER_TEMP/widget-entitlements.json" "$RUNNER_TEMP/widget-entitlements.plist"
+          jq -e \
+            --arg application_identifier "$APPLE_TEAM_ID.$APP_BUNDLE_ID" \
+            --arg team_identifier "$APPLE_TEAM_ID" \
+            --arg group "$APP_GROUP_ID" \
+            '."application-identifier" == $application_identifier and ."com.apple.developer.team-identifier" == $team_identifier and ."com.apple.security.application-groups" == [$group]' \
+            "$RUNNER_TEMP/app-entitlements.json"
+          jq -e \
+            --arg application_identifier "$APPLE_TEAM_ID.$WIDGET_BUNDLE_ID" \
+            --arg team_identifier "$APPLE_TEAM_ID" \
+            --arg group "$APP_GROUP_ID" \
+            '."application-identifier" == $application_identifier and ."com.apple.developer.team-identifier" == $team_identifier and ."com.apple.security.application-groups" == [$group]' \
+            "$RUNNER_TEMP/widget-entitlements.json"
+
+          app_profile="$RUNNER_TEMP/app-profile.plist"
+          widget_profile="$RUNNER_TEMP/widget-profile.plist"
+          security cms -D -i "$app_path/embedded.mobileprovision" > "$app_profile"
+          security cms -D -i "$widget_path/embedded.mobileprovision" > "$widget_profile"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :Name' "$app_profile")" = "$EXPECTED_APP_PROFILE_NAME"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :Name' "$widget_profile")" = "$EXPECTED_WIDGET_PROFILE_NAME"
+          plutil -convert json -o "$RUNNER_TEMP/app-profile.json" "$app_profile"
+          plutil -convert json -o "$RUNNER_TEMP/widget-profile.json" "$widget_profile"
+          jq -e \
+            --arg application_identifier "$APPLE_TEAM_ID.$APP_BUNDLE_ID" \
+            --arg team_identifier "$APPLE_TEAM_ID" \
+            --arg group "$APP_GROUP_ID" \
+            '.Entitlements["application-identifier"] == $application_identifier and .Entitlements["com.apple.developer.team-identifier"] == $team_identifier and .Entitlements["com.apple.security.application-groups"] == [$group]' \
+            "$RUNNER_TEMP/app-profile.json"
+          jq -e \
+            --arg application_identifier "$APPLE_TEAM_ID.$WIDGET_BUNDLE_ID" \
+            --arg team_identifier "$APPLE_TEAM_ID" \
+            --arg group "$APP_GROUP_ID" \
+            '.Entitlements["application-identifier"] == $application_identifier and .Entitlements["com.apple.developer.team-identifier"] == $team_identifier and .Entitlements["com.apple.security.application-groups"] == [$group]' \
+            "$RUNNER_TEMP/widget-profile.json"
+
+          test -f "$app_path/PrivacyInfo.xcprivacy"
+          test -f "$widget_path/PrivacyInfo.xcprivacy"
+          plutil -lint "$app_path/PrivacyInfo.xcprivacy"
+          plutil -lint "$widget_path/PrivacyInfo.xcprivacy"
 
       - name: Upload build to TestFlight
         uses: apple-actions/upload-testflight-build@1ad58030672057aa084b4e96beb6f7a8c627f9e6 # v5.2.1

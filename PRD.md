@@ -1,19 +1,19 @@
-# ThingStruct PRD
+# Samoyed PRD
 
 - 版本：Draft v0.3
 - 日期：2026-06-12
-- 状态：Config-first 重构草案
-- 文档目的：重新明确 ThingStruct 的核心方向：routine 结构由配置文件承载的 Routine Definition 定义，App 负责按天选择、编排、展示、提醒与 checklist 执行，不再承担当天日程结构编辑。
+- 状态：Pre-release product contract
+- 文档目的：明确 Samoyed 的核心方向：少数稳定 Day Type 按 weekday default 自动运行，App 负责展示、提醒、checklist 执行和当天例外；本地文档是业务真相。
 
 ## 1. 一句话定义
 
-ThingStruct 不是待办清单，也不是日历，也不是手机上的日程编辑器。
+Samoyed 不是待办清单，也不是日历，也不是手机上的日程编辑器。
 
-ThingStruct 是一个单人使用的、由 Routine Definition 定义 routine 的「日常运行系统」：用户每天选择一个 routine，App 将这个 Routine Definition 物化为当天的只读运行结构，并在一天中持续、温和地展示当前状态、固定提示语和 checklist。
+Samoyed 是一个单人使用的日常生活辅助 App：用户保存少数几种重复 Day Type，weekday default 自动物化今天；只有“Today is different”时才显式选择例外。App 在一天中持续、温和地展示当前状态、固定提示语和 checklist。
 
 ## 2. 产品本质
 
-ThingStruct 的本质不是“帮用户在手机上规划今天”，而是“把已经定义好的 routine 可靠地运行起来”。
+Samoyed 的本质不是“帮用户在手机上规划今天”，而是“把已经定义好的 routine 可靠地运行起来”。
 
 它服务的不是：
 
@@ -33,13 +33,13 @@ ThingStruct 的本质不是“帮用户在手机上规划今天”，而是“�
 - 一天中不同状态之间的平滑切换
 - 系统表面上的轻量陪伴与快速完成
 
-用户每天的核心动作不是“整理今天有哪些事”，也不是“在手机上改日程块”，而是“选择今天运行哪一个 routine”。
+用户每天不需要重新规划或确认。核心体验是默认 Day Type 自动运行；只有今天确实不同，才通过明确入口选择其他 Day Type、选择无 routine，或做仅影响今天的轻量修正。
 
 ## 3. 产品定位
 
 ### 3.1 产品类别
 
-ThingStruct 位于以下类别的交叉点：
+Samoyed 位于以下类别的交叉点：
 
 - config-defined routine runner
 - structured lifestyle app
@@ -56,10 +56,10 @@ ThingStruct 位于以下类别的交叉点：
 - 系统帮助排序、归类、提醒
 - 今天要做什么，取决于任务列表里新增了什么
 
-ThingStruct 的底层逻辑是：
+Samoyed 的底层逻辑是：
 
 - 用户或外部工具先用 Routine Definition 定义几种可运行的 routine
-- 用户每天选择一个 routine
+- weekday default 自动选择并运行 routine；用户只处理当天例外
 - App 把这个 routine 物化为当天的运行视图
 - 一天中的提醒、任务、备注都从 Routine Definition 结构中自然出现
 - App 主要负责展示、提醒和 checklist 完成，不负责修改 routine 结构
@@ -69,7 +69,7 @@ ThingStruct 的底层逻辑是：
 - todo app 的核心是“收集事项”
 - calendar app 的核心是“安排事件”
 - visual planner 的核心是“在界面上编辑结构”
-- ThingStruct 的核心是“运行 Routine Definition 定义的结构”
+- Samoyed 的核心是“运行 Routine Definition 定义的结构”
 
 ## 4. 产品哲学
 
@@ -95,22 +95,22 @@ App 可以：
 - 校验 Routine Definition
 - 预览 Routine Definition
 - 将 Routine Definition 加入本地 routine library
-- 每天选择一个 routine
+- 配置 weekday default，让稳定 Day Type 自动运行
 - 物化当天运行结构
 - 记录当天 checklist 完成状态
 
 App 不可以：
 
 - 在当天运行界面创建 block
-- 在当天运行界面编辑 block 标题、时间、层级、note、checklist 或 reminder
+- 在当天运行界面进行复杂结构编辑；Today-only correction 只允许修正当天既有 block 的标题、时间和 note
 - 通过拖拽 resize block
 - 通过取消 block 改变当天结构
-- 把当天临时改动反向写回 Routine Definition 或 Routine Config File
+- 把 Today-only correction 反向写回 Saved Day Type、Routine Definition 或 Routine Config File
 - 成为 v1 的可视化 routine builder
 
 ### 4.2 结构状态与执行状态必须分离
 
-ThingStruct 必须清楚区分两类状态：
+Samoyed 必须清楚区分两类状态：
 
 - 结构状态：由 Routine Definition 定义，描述一天应该如何运行。
 - 执行状态：由 App 在某一天本地记录，描述 checklist 是否完成。
@@ -125,7 +125,7 @@ ThingStruct 必须清楚区分两类状态：
 
 ### 4.3 单人绝对成立
 
-ThingStruct 是绝对单人的产品。
+Samoyed 是绝对单人的产品。
 
 这意味着：
 
@@ -138,7 +138,7 @@ ThingStruct 是绝对单人的产品。
 
 ### 4.4 本地优先，但允许外部编排
 
-ThingStruct 不做传统意义上的云同步。
+Samoyed 不做传统意义上的云同步。
 
 正确的模型是：
 
@@ -148,11 +148,11 @@ ThingStruct 不做传统意义上的云同步。
 - 云端不能直接成为产品真相。
 - 云端不能无确认覆盖本地 routine library 或当天执行状态。
 
-这使 ThingStruct 可以天然与 AI 配合，但不会演变成一个依赖远程同步的 SaaS。
+这使 Samoyed 可以天然与 AI 配合，但不会演变成一个依赖远程同步的 SaaS。
 
 ### 4.5 routine-first，而不是 task-first
 
-ThingStruct 优先描述的是 routine，不是一次性任务。
+Samoyed 优先描述的是 routine，不是一次性任务。
 
 适合出现在 Routine Definition 中的是：
 
@@ -162,7 +162,7 @@ ThingStruct 优先描述的是 routine，不是一次性任务。
 - 睡前准备明天的衣服
 - 健身前做热身
 
-不适合出现在 ThingStruct 中的是：
+不适合出现在 Samoyed 中的是：
 
 - 今天 3 点见客户
 - 下周交报告
@@ -173,7 +173,7 @@ ThingStruct 优先描述的是 routine，不是一次性任务。
 
 ### 4.6 手机端是运行终端，不是编排终端
 
-ThingStruct 的手机端重点不是创建或修改结构，而是运行结构。
+Samoyed 的手机端重点不是创建或修改结构，而是运行结构。
 
 端侧应该强调：
 
@@ -195,7 +195,7 @@ ThingStruct 的手机端重点不是创建或修改结构，而是运行结构�
 
 ### 4.7 提醒是配合，不是打断
 
-ThingStruct 的提醒不应像闹钟那样中断用户。
+Samoyed 的提醒不应像闹钟那样中断用户。
 
 它更像一种配合式提示：
 
@@ -245,18 +245,18 @@ ThingStruct 的提醒不应像闹钟那样中断用户。
 - 告知错误或缺失
 - 将通过校验的 routine 加入本地 routine library
 
-### 6.2 每日 routine 选择
+### 6.2 默认自动运行与当天例外
 
-每天开始时，用户选择今天运行哪一个 routine。
+用户为一周配置稳定的 weekday default。每天开始时，App 自动选择并物化对应 routine，不要求重复确认。
 
-选择后：
+自动选择后：
 
 - 今天绑定到这一个 routine
 - App 将 routine 物化为当天结构
 - 当天的 block、note、checklist、reminder 都来自该 routine
-- 用户不需要在手机上继续编辑日程细节
+- 用户不需要在手机上重复选择或规划日程细节
 
-v1 中，每天只选择一个 routine，不支持多个 routine 组合运行。
+v1 中，每天只运行一个 routine，不支持多个 routine 组合运行。“Today is different”允许显式改选当天 routine 或选择无 routine，且不修改 usual week。
 
 ### 6.3 日常执行
 
@@ -270,15 +270,16 @@ v1 中，每天只选择一个 routine，不支持多个 routine 组合运行。
 
 ### 6.4 今天与 routine 不完全匹配时
 
-如果今天和 routine 有差异，v1 不在 App 内编辑当天结构。
+如果今天和默认 routine 有差异，v1 提供三个窄入口：选择另一个已有 routine、选择无 routine，以及对既有 block 做 Today-only correction。
 
 正确处理方式是：
 
-- 继续按当前 routine 展示与执行
-- 必要时选择另一个已有 routine
-- 或在 App 外修改/生成新的 Routine Definition，再导入后用于未来日期
+- 必要时继续按当前 routine 展示与执行
+- 通过“Today is different”选择另一个已有 routine 或无 routine
+- 对标题、开始/结束时间或 note 做仅影响当天的轻量修正
+- routine 本身需要改变时，在 Library 或 Routine Definition 层修改未来默认结构
 
-App 不提供“临时替换一个 block”“拖动调整时间”“取消某个 block 并塌缩层级”等当天结构修正能力。
+App 不提供创建 block、拖拽 resize、reparent、取消并塌缩层级、修改 checklist/reminder 等复杂当天编排能力。Today-only correction 不得写回 Saved Day Type。
 
 ### 6.5 外部智能编排
 
@@ -296,7 +297,7 @@ App 不提供“临时替换一个 block”“拖动调整时间”“取消某�
 - 配置权威：routine 结构只由 Routine Definition 定义。
 - 单人优先：所有功能都围绕“一个人如何过好自己的一天”展开。
 - routine 优先：固定模式比临时事务更重要。
-- 每日选择：每天选择一个 routine，再进入执行。
+- 默认自动：weekday default 每天自动运行，显式选择只用于当天例外。
 - 展示优先：移动端首先负责展示与引导，而不是录入。
 - checklist 优先于 todo：任务是动作清单，不是事项收集箱。
 - 执行状态独立：完成状态属于某一天，不回写 Routine Definition。
@@ -306,7 +307,7 @@ App 不提供“临时替换一个 block”“拖动调整时间”“取消某�
 
 ## 8. 产品不是什么
 
-ThingStruct 不是：
+Samoyed 不是：
 
 - 待办应用
 - GTD 工具
@@ -322,10 +323,10 @@ ThingStruct 不是：
 
 ## 9. 产品是什么
 
-ThingStruct 是：
+Samoyed 是：
 
 - 一个 config-defined routine runner
-- 一个“今天运行哪份 routine”的选择器
+- 一个让稳定 Day Type 自动运行、同时能处理当天例外的 routine runner
 - 一个把 Routine Definition 物化为当天状态结构的系统
 - 一个在正确时间显示正确 checklist 的陪伴工具
 - 一个让重复生活模式可以被定义、复用、执行的系统
@@ -335,7 +336,7 @@ ThingStruct 是：
 
 ### 10.1 Routine Definition
 
-`Routine Definition` 是 ThingStruct 中 routine 结构的唯一权威来源。
+`Routine Definition` 是 Samoyed 中 routine 结构的唯一权威来源。
 
 它是格式无关的结构定义，不等同于某一种文件格式。
 
@@ -379,10 +380,11 @@ v1 规则：
 - 一个自然日最多运行一个 routine
 - 不支持多个 routine 组合
 - 不通过当天界面临时拼装 routine
+- 优先由 weekday default 自动产生；显式选择只覆盖某个具体日期
 
 ### 10.5 Materialized Day
 
-`Materialized Day` 是某个 routine 在某个本地自然日上的只读投影。
+`Materialized Day` 是某个 routine 在某个本地自然日上的运行快照。它通常由默认 Day Type 自动生成，也可以包含不回写来源 routine 的 Today-only correction。
 
 它包含：
 
@@ -392,7 +394,7 @@ v1 规则：
 - 从 Routine Definition 解析出的 reminder
 - 当天本地 checklist 完成状态
 
-它不应被理解为可编辑的日程真相。
+它不是 Saved Day Type 的结构权威；当天轻量修正只属于这个日期。
 
 ### 10.6 TimeBlock
 
@@ -422,7 +424,7 @@ v1 规则：
 
 ### 10.12 Checklist Item
 
-ThingStruct 中的 checklist item 不是“今天有哪些事”，而是某个 routine 状态里的固定步骤。
+Samoyed 中的 checklist item 不是“今天有哪些事”，而是某个 routine 状态里的固定步骤。
 
 正确示例：
 
@@ -437,7 +439,7 @@ ThingStruct 中的 checklist item 不是“今天有哪些事”，而是某个 
 
 ### 10.13 Note
 
-ThingStruct 中的 note 更像“固定地对自己说的话”，是在某种状态下需要反复被看见的提示语。
+Samoyed 中的 note 更像“固定地对自己说的话”，是在某种状态下需要反复被看见的提示语。
 
 例如：
 
@@ -460,7 +462,7 @@ Execution State 不改变 Routine Definition。
 
 ## 11. 核心生活逻辑
 
-ThingStruct 的核心流程是：
+Samoyed 的核心流程是：
 
 ### 11.1 先准备 routine
 
@@ -468,9 +470,9 @@ ThingStruct 的核心流程是：
 
 App 只负责导入、校验、预览和保存本地副本。
 
-### 11.2 再选今天
+### 11.2 默认运行今天
 
-每天先决定今天运行哪一个 routine：
+weekday default 自动决定今天运行哪一个 routine，例如：
 
 - 标准工作日
 - 居家办公日
@@ -484,7 +486,7 @@ App 只负责导入、校验、预览和保存本地副本。
 
 ### 11.4 提示不是命令
 
-当某个时间点到了，ThingStruct 通过以下位置轻轻告诉用户：
+当某个时间点到了，Samoyed 通过以下位置轻轻告诉用户：
 
 - `Now`
 - `Today`
@@ -500,21 +502,21 @@ App 只负责导入、校验、预览和保存本地副本。
 - 该注意什么
 - checklist 里还有什么
 
-### 11.5 结构改进发生在 Routine Definition 层
+### 11.5 区分当天修正与结构改进
 
-如果用户发现 routine 本身需要改变，结构改进应发生在 Routine Definition 层：
+Today-only correction 只修正今天既有 block 的标题、时间或 note，不改变来源 Day Type。如果用户发现 routine 本身需要改变，结构改进应发生在 Library / Routine Definition 层：
 
 - 用户在 App 外修改 Routine Config File
 - 或让 AI/外部工具生成新的 Routine Config File
 - 再导入 App
 - 之后用于未来日期
 
-App 的当天运行界面不承担结构修正职责。
+App 的当天运行界面不承担创建、删除、reparent、checklist/reminder 修改等复杂结构职责。
 
 ## 12. 主要产品目标
 
 - 帮助用户用配置文件保存稳定 routine。
-- 帮助用户每天快速选择一个 routine。
+- 让 weekday default 自动运行，避免用户每天重复选择。
 - 帮助用户在一天中始终知道自己处于哪种状态。
 - 帮助用户在合适的时刻看到合适的 checklist。
 - 让提醒尽量以温和方式出现，而不是成为中断源。
@@ -530,14 +532,14 @@ App 的当天运行界面不承担结构修正职责。
 - 不做外部日历集成。
 - 不做传统云同步。
 - 不做手机端可视化 routine builder。
-- 不做当天日程细节编辑。
+- 不做复杂当天日程编排；保留有限的 Today-only correction。
 - 不做 block 创建、resize、reparent、cancel 工作流。
 - 不做“手机上随时记一条任务”的主路径。
 - 不做高侵入性的闹钟式提醒系统。
 
 ## 14. 信息架构
 
-ThingStruct 采用三个一级页面。
+Samoyed 采用三个一级页面。
 
 ### 14.1 Now
 
@@ -591,16 +593,17 @@ ThingStruct 采用三个一级页面。
 - 查看 note、checklist 和 reminder
 - 跳转到当前 block
 - 从 Library 更换今天运行的 routine，前提是这是一次明确的日级选择
+- 修正当天既有 block 的标题、开始/结束时间和 note；保存时必须明确说明 Saved Day Type 不变
 
 不允许：
 
-- 直接编辑今天的 block
 - 直接新增 base block 或 overlay block
 - 拖拽调整时间
 - resize block
 - reparent block
 - cancel block
 - 修改当天 checklist 文本
+- 修改 reminder 或层级
 - 保存今天结构为新 routine
 
 ### 14.3 Library
@@ -651,26 +654,26 @@ ThingStruct 采用三个一级页面。
 - 预览必须让用户理解“这一天会怎么过”。
 - 校验错误必须可理解，帮助用户回到 Routine Definition 层修正。
 
-### 15.2 每日 Routine 选择
+### 15.2 默认 Routine 与当天选择
 
 功能定义：
 
-- 用户每天应能明确选择一个 routine。
-- 这个选择应是显式的、可理解的、低成本的。
+- weekday default 应自动选择当天 routine，不要求用户每天确认。
+- “Today is different”应提供显式、可理解、低成本的日期级例外选择。
 - routine 选择直接决定当天的 block 结构、checklist、note 和 reminder。
 - v1 中一个自然日只运行一个 routine。
 
 产品要求：
 
-- “今天运行哪一个 routine”是产品主路径。
+- 默认 routine 自动运行是产品主路径；显式选择是例外路径。
 - 用户应能快速理解不同 routine 的差异。
-- 如果今天还没有选择 routine，App 应明确提示用户先选择。
+- 如果今天没有默认或显式选择，App 应明确展示无 routine 状态和选择入口。
 
 ### 15.3 Materialized Day
 
 功能定义：
 
-- App 将 Daily Routine Selection 物化为当天只读结构。
+- App 将默认或显式 Daily Routine Selection 物化为当天运行快照。
 - 物化结果可供 Now、Today、Widget、Live Activity、Control、Shortcut 和通知使用。
 - 物化结果可以被缓存或持久化，但不能成为 routine 结构权威。
 - 当天 checklist 完成状态与物化结构关联保存。
@@ -678,7 +681,7 @@ ThingStruct 采用三个一级页面。
 产品要求：
 
 - 物化过程必须可重复、可解释、可从 Routine Definition 重新生成。
-- 物化结构不能被当天 UI 直接修改。
+- 物化结构只允许 Today-only correction；修正不得写回 Saved Day Type。
 - checklist 完成状态不得回写 Routine Definition。
 
 ### 15.4 Now：当前运行视图
@@ -699,7 +702,7 @@ ThingStruct 采用三个一级页面。
 - `Now` 的语言应该像“陪伴你运行这一天”，而不是“提醒你还有很多事没做”。
 - `Now` 不能包含结构编辑入口。
 
-### 15.5 Today：只读结构视图
+### 15.5 Today：结构视图与当天轻量修正
 
 功能定义：
 
@@ -708,12 +711,13 @@ ThingStruct 采用三个一级页面。
 - 展示当前时间线。
 - 支持查看 block 详情。
 - 支持查看 note、checklist 和 reminder。
+- 支持对当天既有 block 的标题、开始/结束时间和 note 做 Today-only correction。
 
 产品要求：
 
-- `Today` 是“查看和理解”，不是“查看和修正”。
+- `Today` 以“查看和理解”为主，只提供明确标记为 Today only 的轻量修正。
 - 任何复杂编排能力都不应出现在 Today。
-- Today 中的 block 详情是 inspector，不是 editor。
+- Today 中的 block 详情是 inspector；其修正入口不得被误解为 Saved Day Type editor。
 
 ### 15.6 Checklist 执行系统
 
@@ -800,7 +804,7 @@ ThingStruct 采用三个一级页面。
 
 ### 15.11 Widgets
 
-Widget 是 ThingStruct “温和陪伴”的关键系统表面。
+Widget 是 Samoyed “温和陪伴”的关键系统表面。
 
 功能定义：
 
@@ -854,9 +858,6 @@ Live Activity 是“当前这件事正在进行”的持续展示。
 
 - 在 Today 中新建 `BaseBlock`
 - 在 Today 中新建 `OverlayBlock`
-- 在 Today 中编辑 block 标题
-- 在 Today 中编辑 block 时间
-- 在 Today 中编辑 note
 - 在 Today 中编辑 checklist 文本
 - 在 Today 中编辑 reminder
 - 在 Today 中取消 block
@@ -869,17 +870,19 @@ Live Activity 是“当前这件事正在进行”的持续展示。
 
 这些能力如果未来需要出现，必须作为独立的“Routine Definition authoring”或“routine builder”产品重新定义，不能混入当前运行终端。
 
+例外：Today-only correction 可以修改当天既有 block 的标题、开始/结束时间和 note；它不得创建或删除结构、修改 checklist/reminder，也不得写回 Saved Day Type。
+
 ## 17. 信息优先级
 
-ThingStruct 的信息优先级应当始终是：
+Samoyed 的信息优先级应当始终是：
 
-1. 今天运行的是哪一个 routine？
+1. 默认正在运行哪一个 routine；今天是否有例外？
 2. 我现在在哪种状态里？
 3. 我此刻该注意什么？
 4. 我此刻还有哪几个 checklist item 没完成？
 5. 今天整体结构是什么？
 6. 这个结构来自哪份 Routine Definition？
-7. 如果结构需要改变，应如何回到 Routine Definition 层处理？
+7. 这是 Today-only correction，还是需要回到 Library / Routine Definition 层改变未来默认？
 
 不应把“如何在 App 内编辑它”作为信息层级的一部分。
 
@@ -910,10 +913,10 @@ ThingStruct 的信息优先级应当始终是：
 
 ## 19. 成功指标
 
-ThingStruct 的成功不应以“新增了多少任务”或“编辑了多少 block”衡量，而应以以下指标衡量：
+Samoyed 的成功不应以“新增了多少任务”或“编辑了多少 block”衡量，而应以以下指标衡量：
 
 - 用户是否拥有多个稳定 Routine Definition
-- 用户是否每天会选择一个 routine
+- 默认 Day Type 是否可靠自动运行，用户是否只在例外日进行选择
 - 用户是否高频使用 `Now`
 - 用户是否会通过 `Today` 理解当天结构
 - 用户是否在 App 外通过 Widget / Live Activity / Control 完成 checklist
@@ -926,7 +929,7 @@ ThingStruct 的成功不应以“新增了多少任务”或“编辑了多少 b
 - 如果产品表达不清，用户可能误以为它只是另一个待办 App。
 - 如果 App 内编辑入口过重，会背离“Config-first 运行终端”的方向。
 - 如果配置文件校验和预览不够清楚，用户会不知道 routine 是否可运行。
-- 如果每日 routine 选择不够显性，用户会把核心逻辑误解成自动排班工具。
+- 如果默认自动运行不可靠或例外入口不清楚，用户仍会承担重复确认负担。
 - 如果 checklist 看起来像随手任务，会破坏 routine-first 心智。
 - 如果提醒做得太强，会违背产品的陪伴式定位。
 - 如果云端编排边界不清，会慢慢滑向远程真相和伪同步。
@@ -953,33 +956,33 @@ ThingStruct 的成功不应以“新增了多少任务”或“编辑了多少 b
 - App 内编辑 block
 - App 内编辑 checklist 内容
 - App 内编辑 note 或 reminder
-- Today 中 resize block
+- Today 中拖拽 resize block 或复杂结构编辑
 - Today 中 cancel block
 - 从当天结构反向生成可复用 routine
-- 把 Today 设计成可修改结构的页面
+- 把 Today 设计成通用结构编辑器
 
 新的产品方向要求：
 
 - Routine Definition 成为结构权威。
 - Library 围绕 Routine Definition 管理。
-- Today 回归只读结构展示。
+- Today 保持查看优先，并只保留不写回 Day Type 的轻量修正。
 - Now 和系统表面聚焦执行。
 - App 只记录当天 checklist completion 等执行状态。
 
 ## 22. 最终产品主张
 
-ThingStruct 想提供的不是“更多效率”，也不是“更方便地在手机上改日程”，而是“更少犹豫地运行已经想清楚的一天”。
+Samoyed 想提供的不是“更多效率”，也不是“更方便地在手机上改日程”，而是“更少犹豫地运行已经想清楚的一天”。
 
 用户每天不需要在手机上重新规划人生。
 
 用户需要的是：
 
 - 用配置文件沉淀几种稳定生活 routine
-- 早上决定今天运行哪一个 routine
+- 默认 Day Type 自动运行，例外日再明确选择
 - 白天在合适时刻被温和提醒
 - 当下知道自己处于什么状态
 - 看见那些真正该在那个状态里完成的 checklist
 - 完成 checklist，而不破坏 routine 本身
 - 在需要改进结构时，回到 Routine Definition 层迭代
 
-如果说别的 App 是帮用户“管理事情”，ThingStruct 更像是在帮用户“运行生活”。
+如果说别的 App 是帮用户“管理事情”，Samoyed 更像是在帮用户“运行生活”。

@@ -10,3 +10,6 @@ xcuserdata/
 
 # Local Xcode build products
 DerivedData/
+
+# Generated local build server configuration
+buildServer.json

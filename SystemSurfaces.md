@@ -1,4 +1,4 @@
-# ThingStruct System Surfaces
+# Samoyed System Surfaces
 
 - 版本：v0.3
 - 日期：2026-08-07
@@ -6,7 +6,7 @@
 
 本文档记录 Widget、Live Activities、Controls、Shortcuts、Quick Actions 和通知动作等 iOS 系统入口的产品边界。
 
-[PRD.md](/Users/timli/workspace/ThingStruct/PRD.md) 定义产品范围。系统入口只能放大已经验证的核心价值，不能用入口数量替代核心闭环验证。
+[PRD.md](PRD.md) 定义产品范围。系统入口只能放大已经验证的核心价值，不能用入口数量替代核心闭环验证。
 
 ## 1. 当前产品决策
 
