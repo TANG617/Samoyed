@@ -1,5 +1,5 @@
 import XCTest
-@testable import ThingStructCore
+@testable import SamoyedCore
 
 final class CancelAndTaskSelectionTests: XCTestCase {
     func testCancelCollapsesDescendantsAndKeepsTimesStable() throws {

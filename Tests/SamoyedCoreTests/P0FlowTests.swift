@@ -1,15 +1,15 @@
 import XCTest
-@testable import ThingStructCore
+@testable import SamoyedCore
 
 final class P0FlowTests: XCTestCase {
-    func testSavedTemplateDecodesLegacySourceAndAllowsDirectCreation() throws {
-        let legacySource = UUID()
-        let legacy = SavedDayTemplate(title: "Legacy", sourceSuggestedTemplateID: legacySource, blocks: [])
-        let decodedLegacy = try JSONDecoder().decode(
+    func testSavedTemplateRoundTripsSuggestedSourceAndAllowsDirectCreation() throws {
+        let suggestedSource = UUID()
+        let sourced = SavedDayTemplate(title: "Suggested", sourceSuggestedTemplateID: suggestedSource, blocks: [])
+        let decoded = try JSONDecoder().decode(
             SavedDayTemplate.self,
-            from: JSONEncoder().encode(legacy)
+            from: JSONEncoder().encode(sourced)
         )
-        XCTAssertEqual(decodedLegacy.sourceSuggestedTemplateID, legacySource)
+        XCTAssertEqual(decoded.sourceSuggestedTemplateID, suggestedSource)
 
         let direct = try TemplateEngine.makeSimpleSavedTemplate(
             title: "Workday",
@@ -32,7 +32,7 @@ final class P0FlowTests: XCTestCase {
         )
 
         let activated = try TemplateEngine.activate(
-            document: ThingStructDocument(),
+            document: SamoyedDocument(),
             template: template,
             assignedWeekdays: [.monday, .tuesday, .wednesday, .thursday, .friday],
             today: today,
@@ -47,7 +47,7 @@ final class P0FlowTests: XCTestCase {
     }
 
     func testActivationValidationDoesNotMutateInput() throws {
-        let original = ThingStructDocument()
+        let original = SamoyedDocument()
         let template = try TemplateEngine.makeSimpleSavedTemplate(
             title: "Workday",
             blocks: [templateBlock(title: "Morning", timing: .absolute(startMinuteOfDay: 480, requestedEndMinuteOfDay: 720))]

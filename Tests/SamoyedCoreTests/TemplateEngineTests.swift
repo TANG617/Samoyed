@@ -1,5 +1,5 @@
 import XCTest
-@testable import ThingStructCore
+@testable import SamoyedCore
 
 final class TemplateEngineTests: XCTestCase {
     func testSuggestedTemplatesKeepRollingThreeDayWindow() throws {
@@ -375,7 +375,7 @@ final class TemplateEngineTests: XCTestCase {
             )
         ) { error in
             XCTAssertEqual(
-                error as? ThingStructCoreError,
+                error as? SamoyedCoreError,
                 .regenerationNotAllowedForNonFutureDate(today)
             )
         }
@@ -401,7 +401,7 @@ final class TemplateEngineTests: XCTestCase {
             )
         ) { error in
             XCTAssertEqual(
-                error as? ThingStructCoreError,
+                error as? SamoyedCoreError,
                 .regenerationBlockedByUserEdits(future)
             )
         }
@@ -422,7 +422,7 @@ final class TemplateEngineTests: XCTestCase {
             )
         ) { error in
             XCTAssertEqual(
-                error as? ThingStructCoreError,
+                error as? SamoyedCoreError,
                 .regenerationBlockedByCompletedTasks(future)
             )
         }

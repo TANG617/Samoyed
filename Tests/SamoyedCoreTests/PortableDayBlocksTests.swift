@@ -1,5 +1,5 @@
 import XCTest
-@testable import ThingStructCore
+@testable import SamoyedCore
 
 final class PortableDayBlocksTests: XCTestCase {
     func testRoundTripPreservesNestedStructureAndTaskCompletion() throws {
@@ -38,18 +38,18 @@ final class PortableDayBlocksTests: XCTestCase {
             )
         )
 
-        let yaml = try ThingStructPortableDayBlocks.exportYAML(from: plan)
+        let yaml = try SamoyedPortableDayBlocks.exportYAML(from: plan)
         XCTAssertTrue(yaml.contains("kind: day_blocks"))
         XCTAssertTrue(yaml.contains("children:"))
         XCTAssertTrue(yaml.contains("10m_before"))
 
-        let summary = try ThingStructPortableDayBlocks.summary(fromYAML: yaml)
+        let summary = try SamoyedPortableDayBlocks.summary(fromYAML: yaml)
         XCTAssertEqual(summary.sourceDate, day)
         XCTAssertEqual(summary.baseBlockCount, 1)
         XCTAssertEqual(summary.totalBlockCount, 2)
         XCTAssertEqual(summary.taskCount, 3)
 
-        let imported = try ThingStructPortableDayBlocks.dayPlanForImport(fromYAML: yaml, on: day)
+        let imported = try SamoyedPortableDayBlocks.dayPlanForImport(fromYAML: yaml, on: day)
         XCTAssertEqual(imported.blocks.count, 2)
 
         let importedMorning = try XCTUnwrap(imported.blocks.first(where: { $0.layerIndex == 0 }))
@@ -90,7 +90,7 @@ final class PortableDayBlocksTests: XCTestCase {
             timing: .absolute(startMinuteOfDay: 0, requestedEndMinuteOfDay: 480)
         )
 
-        let yaml = try ThingStructPortableDayBlocks.exportYAML(
+        let yaml = try SamoyedPortableDayBlocks.exportYAML(
             from: DayPlan(date: day, blocks: [blank, active, cancelled])
         )
 
@@ -111,7 +111,7 @@ final class PortableDayBlocksTests: XCTestCase {
               start: "25:00"
         """
 
-        XCTAssertThrowsError(try ThingStructPortableDayBlocks.summary(fromYAML: yaml)) { error in
+        XCTAssertThrowsError(try SamoyedPortableDayBlocks.summary(fromYAML: yaml)) { error in
             XCTAssertTrue(error.localizedDescription.contains("timing.start"))
         }
     }
@@ -135,7 +135,7 @@ final class PortableDayBlocksTests: XCTestCase {
                 completed: true
         """
 
-        let imported = try ThingStructPortableDayBlocks.dayPlanForImport(
+        let imported = try SamoyedPortableDayBlocks.dayPlanForImport(
             fromYAML: yaml,
             on: day,
             dayPlanID: dayPlanID,

@@ -1,5 +1,5 @@
 import XCTest
-@testable import ThingStructCore
+@testable import SamoyedCore
 
 final class PresentationTests: XCTestCase {
     func testSeededDocumentCreatesSavedTemplatesAndTomorrowPlan() throws {
@@ -11,8 +11,8 @@ final class PresentationTests: XCTestCase {
     }
 
     func testNowScreenModelShowsBlankMessageWhenNoUserBlocksExist() throws {
-        let model = try ThingStructPresentation.nowScreenModel(
-            document: ThingStructDocument(),
+        let model = try SamoyedPresentation.nowScreenModel(
+            document: SamoyedDocument(),
             date: LocalDay(year: 2026, month: 3, day: 19),
             minuteOfDay: 600
         )
@@ -24,11 +24,11 @@ final class PresentationTests: XCTestCase {
 
     func testTodayScreenModelHidesRuntimeBlankBlocksButExposesOpenSlots() throws {
         let morning = baseBlock(title: "Morning", start: 60, requestedEnd: 120)
-        let document = ThingStructDocument(
+        let document = SamoyedDocument(
             dayPlans: [makePlan(blocks: [morning])]
         )
 
-        let model = try ThingStructPresentation.todayScreenModel(
+        let model = try SamoyedPresentation.todayScreenModel(
             document: document,
             date: LocalDay(year: 2026, month: 3, day: 19),
             selectedBlockID: nil,
@@ -63,8 +63,8 @@ final class PresentationTests: XCTestCase {
             )
         ])
 
-        let model = try ThingStructPresentation.nowScreenModel(
-            document: ThingStructDocument(dayPlans: [try DayPlanEngine.resolved(plan)]),
+        let model = try SamoyedPresentation.nowScreenModel(
+            document: SamoyedDocument(dayPlans: [try DayPlanEngine.resolved(plan)]),
             date: LocalDay(year: 2026, month: 3, day: 19),
             minuteOfDay: 600
         )
@@ -99,8 +99,8 @@ final class PresentationTests: XCTestCase {
             )
         ])
 
-        let model = try ThingStructPresentation.nowScreenModel(
-            document: ThingStructDocument(dayPlans: [try DayPlanEngine.resolved(plan)]),
+        let model = try SamoyedPresentation.nowScreenModel(
+            document: SamoyedDocument(dayPlans: [try DayPlanEngine.resolved(plan)]),
             date: LocalDay(year: 2026, month: 3, day: 19),
             minuteOfDay: 600
         )
@@ -123,8 +123,8 @@ final class PresentationTests: XCTestCase {
             )
         ])
 
-        let model = try ThingStructPresentation.todayScreenModel(
-            document: ThingStructDocument(dayPlans: [try DayPlanEngine.resolved(plan)]),
+        let model = try SamoyedPresentation.todayScreenModel(
+            document: SamoyedDocument(dayPlans: [try DayPlanEngine.resolved(plan)]),
             date: LocalDay(year: 2026, month: 3, day: 19),
             selectedBlockID: blockID,
             currentMinute: nil
@@ -181,8 +181,8 @@ final class PresentationTests: XCTestCase {
             ]
         )
 
-        let model = try ThingStructPresentation.nowScreenModel(
-            document: ThingStructDocument(dayPlans: [try DayPlanEngine.resolved(plan)]),
+        let model = try SamoyedPresentation.nowScreenModel(
+            document: SamoyedDocument(dayPlans: [try DayPlanEngine.resolved(plan)]),
             date: LocalDay(year: 2026, month: 3, day: 19),
             minuteOfDay: 600
         )
@@ -215,8 +215,8 @@ final class PresentationTests: XCTestCase {
             )
         ])
 
-        let model = try ThingStructPresentation.todayScreenModel(
-            document: ThingStructDocument(dayPlans: [try DayPlanEngine.resolved(plan)]),
+        let model = try SamoyedPresentation.todayScreenModel(
+            document: SamoyedDocument(dayPlans: [try DayPlanEngine.resolved(plan)]),
             date: LocalDay(year: 2026, month: 3, day: 19),
             selectedBlockID: nil,
             currentMinute: 585
@@ -231,8 +231,8 @@ final class PresentationTests: XCTestCase {
         let morning = baseBlock(title: "Morning", start: 540, requestedEnd: 600)
         let evening = baseBlock(title: "Evening", start: 660, requestedEnd: 720)
 
-        let model = try ThingStructPresentation.todayScreenModel(
-            document: ThingStructDocument(dayPlans: [try DayPlanEngine.resolved(makePlan(blocks: [morning, evening]))]),
+        let model = try SamoyedPresentation.todayScreenModel(
+            document: SamoyedDocument(dayPlans: [try DayPlanEngine.resolved(makePlan(blocks: [morning, evening]))]),
             date: LocalDay(year: 2026, month: 3, day: 19),
             selectedBlockID: nil,
             currentMinute: 630
@@ -265,8 +265,8 @@ final class PresentationTests: XCTestCase {
             )
         ])
 
-        let model = try ThingStructPresentation.todayScreenModel(
-            document: ThingStructDocument(dayPlans: [try DayPlanEngine.resolved(plan)]),
+        let model = try SamoyedPresentation.todayScreenModel(
+            document: SamoyedDocument(dayPlans: [try DayPlanEngine.resolved(plan)]),
             date: LocalDay(year: 2026, month: 3, day: 19),
             selectedBlockID: overlayID,
             currentMinute: nil
@@ -296,8 +296,8 @@ final class PresentationTests: XCTestCase {
             blocks: []
         )
 
-        let model = try ThingStructPresentation.templatesScreenModel(
-            document: ThingStructDocument(
+        let model = try SamoyedPresentation.templatesScreenModel(
+            document: SamoyedDocument(
                 dayPlans: [],
                 savedTemplates: [todayTemplate, weekdayTemplate, overrideTemplate],
                 weekdayRules: [WeekdayTemplateRule(weekday: tomorrow.weekday, savedTemplateID: weekdayTemplate.id)],
@@ -340,8 +340,8 @@ final class PresentationTests: XCTestCase {
             ]
         )
 
-        let model = try ThingStructPresentation.templatesScreenModel(
-            document: ThingStructDocument(
+        let model = try SamoyedPresentation.templatesScreenModel(
+            document: SamoyedDocument(
                 savedTemplates: [defaultTemplate, pickedTemplate],
                 weekdayRules: [WeekdayTemplateRule(weekday: referenceDay.weekday, savedTemplateID: defaultTemplate.id)],
                 daySelections: [
@@ -376,8 +376,8 @@ final class PresentationTests: XCTestCase {
             ]
         )
 
-        let model = try ThingStructPresentation.templatesScreenModel(
-            document: ThingStructDocument(
+        let model = try SamoyedPresentation.templatesScreenModel(
+            document: SamoyedDocument(
                 savedTemplates: [defaultTemplate],
                 weekdayRules: [WeekdayTemplateRule(weekday: referenceDay.weekday, savedTemplateID: defaultTemplate.id)],
                 daySelections: [

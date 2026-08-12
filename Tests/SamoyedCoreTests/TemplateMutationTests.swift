@@ -1,5 +1,5 @@
 import XCTest
-@testable import ThingStructCore
+@testable import SamoyedCore
 
 final class TemplateMutationTests: XCTestCase {
     func testPreviewDayPlanResolvesTemplateBlocks() throws {
@@ -59,7 +59,7 @@ final class TemplateMutationTests: XCTestCase {
                 )
             ],
             assignedWeekdays: [.tuesday, .friday],
-            in: ThingStructDocument(
+            in: SamoyedDocument(
                 dayPlans: [],
                 savedTemplates: [template, otherTemplate],
                 weekdayRules: [
@@ -96,7 +96,7 @@ final class TemplateMutationTests: XCTestCase {
 
         let updated = TemplateEngine.deleteSavedTemplate(
             template.id,
-            from: ThingStructDocument(
+            from: SamoyedDocument(
                 dayPlans: [
                     DayPlan(date: date, sourceSavedTemplateID: template.id, blocks: [])
                 ],

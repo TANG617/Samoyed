@@ -1,5 +1,5 @@
 import XCTest
-@testable import ThingStructCore
+@testable import SamoyedCore
 
 final class DayPlanStructureTests: XCTestCase {
     func testRejectsOverlayWithoutParent() {
@@ -12,7 +12,7 @@ final class DayPlanStructureTests: XCTestCase {
         let plan = makePlan(blocks: [orphan])
 
         XCTAssertThrowsError(try DayPlanEngine.validate(plan)) { error in
-            XCTAssertEqual(error as? ThingStructCoreError, .invalidRootBlock(orphan.id))
+            XCTAssertEqual(error as? SamoyedCoreError, .invalidRootBlock(orphan.id))
         }
     }
 
@@ -39,7 +39,7 @@ final class DayPlanStructureTests: XCTestCase {
         let plan = makePlan(blocks: [base, first, second])
 
         XCTAssertThrowsError(try DayPlanEngine.validate(plan)) { error in
-            XCTAssertEqual(error as? ThingStructCoreError, .cycleDetected(firstID))
+            XCTAssertEqual(error as? SamoyedCoreError, .cycleDetected(firstID))
         }
     }
 
@@ -51,7 +51,7 @@ final class DayPlanStructureTests: XCTestCase {
         let plan = makePlan(blocks: [first, second])
 
         XCTAssertThrowsError(try DayPlanEngine.validate(plan)) { error in
-            XCTAssertEqual(error as? ThingStructCoreError, .duplicateBlockID(duplicateID))
+            XCTAssertEqual(error as? SamoyedCoreError, .duplicateBlockID(duplicateID))
         }
     }
 }

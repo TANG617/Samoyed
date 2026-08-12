@@ -3,25 +3,26 @@
 import PackageDescription
 
 let package = Package(
-    name: "ThingStructCore",
+    name: "SamoyedCore",
     platforms: [
         .macOS(.v13)
     ],
     products: [
         .library(
-            name: "ThingStructCore",
-            targets: ["ThingStructCore"]
+            name: "SamoyedCore",
+            targets: ["SamoyedCore"]
         )
     ],
     targets: [
         .target(
-            name: "ThingStructCore",
-            path: "ThingStruct/CoreShared"
+            name: "SamoyedCore",
+            path: "Samoyed/CoreShared"
         ),
         .testTarget(
-            name: "ThingStructCoreTests",
-            dependencies: ["ThingStructCore"],
-            path: "Tests/ThingStructCoreTests"
+            name: "SamoyedCoreTests",
+            dependencies: ["SamoyedCore"],
+            path: "Tests/SamoyedCoreTests",
+            resources: [.copy("Fixtures")]
         )
     ]
 )

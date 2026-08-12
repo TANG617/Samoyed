@@ -1,5 +1,5 @@
 import XCTest
-@testable import ThingStructCore
+@testable import SamoyedCore
 
 final class DayPlanResolutionTests: XCTestCase {
     func testBaseBlocksEndAtNextSiblingOrMidnight() throws {
@@ -74,7 +74,7 @@ final class DayPlanResolutionTests: XCTestCase {
 
         XCTAssertThrowsError(try DayPlanEngine.resolved(plan)) { error in
             XCTAssertEqual(
-                error as? ThingStructCoreError,
+                error as? SamoyedCoreError,
                 .blockOutsideParent(blockID: invalidOverlay.id, parentID: morning.id)
             )
         }

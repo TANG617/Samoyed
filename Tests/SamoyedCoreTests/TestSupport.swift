@@ -1,5 +1,5 @@
 import Foundation
-@testable import ThingStructCore
+@testable import SamoyedCore
 
 func makePlan(
     date: LocalDay = LocalDay(year: 2026, month: 3, day: 19),

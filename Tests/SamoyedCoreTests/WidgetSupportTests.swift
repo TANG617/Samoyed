@@ -1,5 +1,5 @@
 import XCTest
-@testable import ThingStructCore
+@testable import SamoyedCore
 
 final class WidgetSupportTests: XCTestCase {
     func testLocalDayParsesISODateString() {
@@ -70,7 +70,7 @@ final class WidgetSupportTests: XCTestCase {
             ]
         )
 
-        let snapshot = ThingStructWidgetSnapshotBuilder.makeSnapshot(
+        let snapshot = SamoyedWidgetSnapshotBuilder.makeSnapshot(
             from: model,
             maxTaskCount: 3
         )
@@ -89,11 +89,11 @@ final class WidgetSupportTests: XCTestCase {
     func testRepositoryWidgetSnapshotUsesNoRoutineStateWhenTodayHasNoSelection() throws {
         let day = LocalDay(year: 2026, month: 3, day: 22)
         let fileURL = FileManager.default.temporaryDirectory
-            .appending(path: "ThingStructTests")
+            .appending(path: "SamoyedTests")
             .appending(path: "\(UUID().uuidString).json")
-        let repository = ThingStructDocumentRepository(fileURL: fileURL)
+        let repository = SamoyedDocumentRepository(fileURL: fileURL)
 
-        try repository.save(ThingStructDocument())
+        try repository.save(SamoyedDocument())
 
         let snapshot = try repository.widgetSnapshot(
             at: try XCTUnwrap(day.date(minuteOfDay: 600)),

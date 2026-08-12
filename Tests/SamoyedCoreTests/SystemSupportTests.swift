@@ -1,9 +1,9 @@
 import XCTest
-@testable import ThingStructCore
+@testable import SamoyedCore
 
 final class SystemSupportTests: XCTestCase {
     func testSystemRouteRoundTripsTodayURL() throws {
-        let route = ThingStructSystemRoute.today(
+        let route = SamoyedSystemRoute.today(
             date: LocalDay(year: 2026, month: 3, day: 25),
             blockID: UUID(uuidString: "11111111-1111-1111-1111-111111111111"),
             taskID: UUID(uuidString: "22222222-2222-2222-2222-222222222222"),
@@ -11,22 +11,45 @@ final class SystemSupportTests: XCTestCase {
         )
 
         XCTAssertEqual(
-            ThingStructSystemRoute(url: try XCTUnwrap(route.url)),
+            SamoyedSystemRoute(url: try XCTUnwrap(route.url)),
             route
         )
     }
 
+    func testCanonicalSystemRoutesParseAndRoundTrip() throws {
+        let routes: [SamoyedSystemRoute] = [
+            .now(),
+            .today(),
+            .today(date: LocalDay(year: 2026, month: 8, day: 12)),
+            .library(),
+            .startCurrentBlockLiveActivity(),
+            .endCurrentBlockLiveActivity()
+        ]
+
+        for route in routes {
+            let url = try XCTUnwrap(route.url)
+            XCTAssertEqual(url.scheme, "samoyed")
+            XCTAssertEqual(SamoyedSystemRoute(url: url), route)
+        }
+    }
+
+    func testSystemRoutesRejectNoncanonicalSchemeAndRemovedTemplatesRoute() throws {
+        XCTAssertNil(SamoyedSystemRoute(url: try XCTUnwrap(URL(string: "obsolete://now"))))
+        XCTAssertNil(SamoyedSystemRoute(url: try XCTUnwrap(URL(string: "samoyed://templates"))))
+        XCTAssertNil(SamoyedSystemRoute(url: try XCTUnwrap(URL(string: "samoyed:///today"))))
+    }
+
     func testDocumentRepositoryLoadsSavesAndMutatesUsingFileURL() throws {
         let fileURL = FileManager.default.temporaryDirectory
-            .appending(path: "ThingStructTests")
+            .appending(path: "SamoyedTests")
             .appending(path: "\(UUID().uuidString).json")
-        let repository = ThingStructDocumentRepository(fileURL: fileURL)
+        let repository = SamoyedDocumentRepository(fileURL: fileURL)
         let template = SavedDayTemplate(
             title: "Weekday",
             sourceSuggestedTemplateID: UUID(),
             blocks: []
         )
-        let document = ThingStructDocument(savedTemplates: [template])
+        let document = SamoyedDocument(savedTemplates: [template])
 
         XCTAssertNil(try repository.load())
 
@@ -74,7 +97,7 @@ final class SystemSupportTests: XCTestCase {
         )
         overlay.note = "Top note"
 
-        let document = ThingStructDocument(dayPlans: [try DayPlanEngine.resolved(makePlan(date: day, blocks: [base, overlay]))])
+        let document = SamoyedDocument(dayPlans: [try DayPlanEngine.resolved(makePlan(date: day, blocks: [base, overlay]))])
         let snapshot = try makeLiveActivitySnapshot(document: document, day: day, minuteOfDay: 600)
 
         XCTAssertEqual(snapshot.currentBlock?.blockID, overlayID)
@@ -83,7 +106,7 @@ final class SystemSupportTests: XCTestCase {
         XCTAssertEqual(snapshot.displayNote, "Top note")
         XCTAssertNil(snapshot.displaySourceBlockTitle)
         XCTAssertEqual(
-            ThingStructSystemRoute(url: try XCTUnwrap(snapshot.tapURL())),
+            SamoyedSystemRoute(url: try XCTUnwrap(snapshot.tapURL())),
             .now(source: .liveActivity)
         )
     }
@@ -114,7 +137,7 @@ final class SystemSupportTests: XCTestCase {
         )
         overlay.note = "Top note should not stay visible"
 
-        let document = ThingStructDocument(dayPlans: [try DayPlanEngine.resolved(makePlan(date: day, blocks: [base, overlay]))])
+        let document = SamoyedDocument(dayPlans: [try DayPlanEngine.resolved(makePlan(date: day, blocks: [base, overlay]))])
         let snapshot = try makeLiveActivitySnapshot(document: document, day: day, minuteOfDay: 600)
 
         XCTAssertEqual(snapshot.currentBlock?.blockID, overlayID)
@@ -123,7 +146,7 @@ final class SystemSupportTests: XCTestCase {
         XCTAssertEqual(snapshot.displayNote, "Base note")
         XCTAssertEqual(snapshot.displaySourceBlockTitle, "Morning")
         XCTAssertEqual(
-            ThingStructSystemRoute(url: try XCTUnwrap(snapshot.deepLinkURL())),
+            SamoyedSystemRoute(url: try XCTUnwrap(snapshot.deepLinkURL())),
             .today(date: day, blockID: baseID, taskID: baseTaskID, source: .liveActivity)
         )
     }
@@ -153,7 +176,7 @@ final class SystemSupportTests: XCTestCase {
             tasks: [TaskItem(id: overlayTaskID, title: "Top task")]
         )
 
-        let document = ThingStructDocument(dayPlans: [try DayPlanEngine.resolved(makePlan(date: day, blocks: [base, overlay]))])
+        let document = SamoyedDocument(dayPlans: [try DayPlanEngine.resolved(makePlan(date: day, blocks: [base, overlay]))])
         let snapshot = try makeLiveActivitySnapshot(document: document, day: day, minuteOfDay: 600)
 
         XCTAssertEqual(snapshot.displayBlock?.blockID, overlayID)
@@ -186,7 +209,7 @@ final class SystemSupportTests: XCTestCase {
         )
         overlay.note = "Top note"
 
-        let document = ThingStructDocument(dayPlans: [try DayPlanEngine.resolved(makePlan(date: day, blocks: [base, overlay]))])
+        let document = SamoyedDocument(dayPlans: [try DayPlanEngine.resolved(makePlan(date: day, blocks: [base, overlay]))])
         let snapshot = try makeLiveActivitySnapshot(document: document, day: day, minuteOfDay: 600)
 
         XCTAssertEqual(snapshot.currentBlock?.blockID, overlayID)
@@ -195,11 +218,11 @@ final class SystemSupportTests: XCTestCase {
         XCTAssertNil(snapshot.displayNote)
         XCTAssertEqual(snapshot.statusMessage, "No incomplete tasks in this chain.")
         XCTAssertEqual(
-            ThingStructSystemRoute(url: try XCTUnwrap(snapshot.deepLinkURL())),
+            SamoyedSystemRoute(url: try XCTUnwrap(snapshot.deepLinkURL())),
             .today(date: day, blockID: overlayID, taskID: nil, source: .liveActivity)
         )
         XCTAssertEqual(
-            ThingStructSystemRoute(url: try XCTUnwrap(snapshot.tapURL())),
+            SamoyedSystemRoute(url: try XCTUnwrap(snapshot.tapURL())),
             .now(source: .liveActivity)
         )
     }
@@ -235,8 +258,10 @@ final class SystemSupportTests: XCTestCase {
         )
         overlay.note = "Top note"
 
-        let repository = ThingStructDocumentRepository()
-        var document = ThingStructDocument(dayPlans: [try DayPlanEngine.resolved(makePlan(date: day, blocks: [base, overlay]))])
+        let repository = SamoyedDocumentRepository(
+            fileURL: FileManager.default.temporaryDirectory.appending(path: "SamoyedCoreTests-actions.json")
+        )
+        var document = SamoyedDocument(dayPlans: [try DayPlanEngine.resolved(makePlan(date: day, blocks: [base, overlay]))])
         let referenceDate = try date(day, minuteOfDay: 600)
 
         let firstSnapshot = try makeLiveActivitySnapshot(document: document, day: day, minuteOfDay: 600)
@@ -269,12 +294,14 @@ final class SystemSupportTests: XCTestCase {
     }
 
     private func makeLiveActivitySnapshot(
-        document: ThingStructDocument,
+        document: SamoyedDocument,
         day: LocalDay,
         minuteOfDay: Int
-    ) throws -> ThingStructSystemLiveActivitySnapshot {
-        let repository = ThingStructDocumentRepository()
-        let now = try ThingStructPresentation.nowScreenModel(
+    ) throws -> SamoyedSystemLiveActivitySnapshot {
+        let repository = SamoyedDocumentRepository(
+            fileURL: FileManager.default.temporaryDirectory.appending(path: "SamoyedCoreTests-snapshot.json")
+        )
+        let now = try SamoyedPresentation.nowScreenModel(
             document: document,
             date: day,
             minuteOfDay: minuteOfDay
