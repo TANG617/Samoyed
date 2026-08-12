@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <g id="Facial Details" fill="#10161D">
+    <path id="Eye" d="M649 397C664 395 679 410 678 428C677 445 663 453 648 449C631 446 624 434 629 420C633 409 640 401 649 397Z"/>
+    <path id="Nose" d="M810 473C828 458 855 467 863 487C868 505 855 524 840 536C828 546 810 527 802 508C795 493 799 481 810 473Z"/>
+    <path id="Smile" d="M826 528C824 568 800 596 765 610C730 623 693 617 667 600" fill="none" stroke="#10161D" stroke-width="8" stroke-linecap="round"/>
+  </g>
+  <circle id="Eye Glint" cx="660" cy="410" r="6" fill="#F7FAFF"/>
+  <ellipse id="Nostril" cx="843" cy="489" rx="8" ry="6" fill="#05080C" opacity="0.72"/>
+</svg>

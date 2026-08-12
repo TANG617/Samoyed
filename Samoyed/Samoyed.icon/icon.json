@@ -1,18 +1,35 @@
 {
   "fill" : {
-    "automatic-gradient" : "extended-srgb:0.00000,0.53333,1.00000,1.00000"
+    "linear-gradient" : [
+      "display-p3:0.35714,0.80493,1.00000,1.00000",
+      "extended-srgb:0.00000,0.53333,1.00000,1.00000"
+    ]
   },
   "groups" : [
     {
       "layers" : [
         {
-          "image-name" : "Image.png",
-          "name" : "Image",
+          "blend-mode" : "darken",
+          "image-name" : "02_Facial_Details.svg",
+          "name" : "02_Facial_Details",
           "position" : {
-            "scale" : 0.91,
+            "scale" : 1,
             "translation-in-points" : [
-              114.93672276693633,
-              230.69328925485297
+              58,
+              71.9765625
+            ]
+          }
+        },
+        {
+          "blend-mode" : "normal",
+          "glass" : true,
+          "image-name" : "01_Samoyed_Body.png",
+          "name" : "01_Samoyed_Body",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              58,
+              71.9765625
             ]
           }
         }

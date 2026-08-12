@@ -17,6 +17,8 @@
 	</array>
 	<key>SamoyedAppGroupIdentifier</key>
 	<string>$(SAMOYED_APP_GROUP_ID)</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>NSAppTransportSecurity</key>
