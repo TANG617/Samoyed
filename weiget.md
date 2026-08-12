@@ -1,4 +1,4 @@
-# ThingStruct `Now` Widget
+# Samoyed `Now` Widget
 
 - 版本：v0.3
 - 日期：2026-08-07
@@ -6,11 +6,11 @@
 
 本文档定义 P0 验证通过后，第一个系统入口实验：单一 `Now` Widget。
 
-产品范围以 [PRD.md](/Users/timli/workspace/ThingStruct/PRD.md) 为准；系统入口边界以 [SystemSurfaces.md](/Users/timli/workspace/ThingStruct/SystemSurfaces.md) 为准。Widget 只消费核心层语义，不定义新的业务规则。
+产品范围以 [PRD.md](PRD.md) 为准；系统入口边界以 [SystemSurfaces.md](SystemSurfaces.md) 为准。Widget 只消费核心层语义，不定义新的业务规则。
 
 ## 1. 为什么只保留一个 Widget
 
-ThingStruct 的核心价值是让用户更低成本地知道“现在是什么、现在做什么”。Widget 是最直接的验证载体，因为它能够减少打开 App 和寻找 `Now` 的步骤。
+Samoyed 的核心价值是让用户更低成本地知道“现在是什么、现在做什么”。Widget 是最直接的验证载体，因为它能够减少打开 App 和寻找 `Now` 的步骤。
 
 Widget 不是为了扩大平台覆盖面，也不证明核心产品已经成立。在以下条件满足前，不继续开发：
 
@@ -87,7 +87,7 @@ Widget 需要验证的是行为价值，不是展示能力。
 
 ### 4.1 尚未激活
 
-显示“先在 ThingStruct 建立你的第一个日型”，点击进入首次激活。
+显示“先在 Samoyed 建立你的第一个日型”，点击进入首次激活。
 
 不得在 Widget provider 中创建 sample data 或静默生成虚假历史。
 
@@ -135,7 +135,7 @@ Widget entry 只携带渲染所需数据，例如：
 - 状态类型
 - 可选的下一刷新边界
 
-不要把整个 `ThingStructDocument` 放进 entry。
+不要把整个 `SamoyedDocument` 放进 entry。
 
 ### 5.3 时间线
 
@@ -164,7 +164,7 @@ App 回到前台时重新加载文档，避免 Widget 写入后内存状态滞�
 
 Widget 整体点击默认进入：
 
-- `thingstruct://now`
+- `samoyed://now`
 
 尚未激活时应进入首次激活。需要定位明确 block 时可以使用已有 today route，但不得让用户先经过 Library 或模板管理页。
 

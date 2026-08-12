@@ -1,4 +1,4 @@
-# ThingStruct Maintenance Guide
+# Samoyed Maintenance Guide
 
 ## Product Authority
 - Read `PRD.md` before accepting feature work. It owns the target user, product behavior, P0/P1 boundary, frozen capabilities, and validation criteria.
@@ -10,10 +10,10 @@
 - `PRD.md`: product goal, current scope, and requirement admission rules
 - `README.md`: domain semantics and invariants
 - `Design.md`: P0 experience and UI acceptance flow
-- `ThingStruct/CoreShared`: pure rules and shared models
-- `ThingStruct/ThingStructStore.swift`: app state, screen queries, user commands
-- `ThingStruct/ThingStructApp.swift`: app launch, root UI, quick actions, external routing
-- `ThingStructWidgetExtension`: widget rendering and widget-only entry points
+- `Samoyed/CoreShared`: pure rules and shared models
+- `Samoyed/SamoyedStore.swift`: app state, screen queries, user commands
+- `Samoyed/SamoyedApp.swift`: app launch, root UI, quick actions, external routing
+- `SamoyedWidgetExtension`: widget rendering and widget-only entry points
 
 ## Product Change Gate
 - During P0, prioritize empty-data activation, automatic default-day running, `Now`, exception switching, lightweight Today correction, and local persistence.
@@ -25,7 +25,7 @@
 ## Where Changes Go
 - Change planning rules, validation, template logic, or time resolution in `Engine` files.
 - Change what a screen needs to render in `ScreenModels` and the presentation helpers.
-- Change user-triggered app behavior in `ThingStructStore`.
+- Change user-triggered app behavior in `SamoyedStore`.
 - Change deep links, quick actions, widget buttons, notifications, or live activity wiring in the app/widget entry files.
 
 ## When To Add A File
@@ -42,7 +42,7 @@
 - Confirm the change is inside the current PRD scope or is a required regression fix.
 - Keep `DayPlanEngine` and `TemplateEngine` pure.
 - Keep repository code limited to loading, saving, and atomic document mutation.
-- Keep route parsing outside `ThingStructStore`.
+- Keep route parsing outside `SamoyedStore`.
 - Verify the empty-document path when changing startup, templates, or materialization.
 - Run `swift test` after core changes.
 - Run an Xcode build after app or widget entry changes.

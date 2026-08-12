@@ -1,12 +1,12 @@
-# ThingStruct Design
+# Samoyed Design
 
-本文档定义 ThingStruct 的 iOS 产品结构、界面层级和术语。当前设计以 [PRD.md](/Users/timli/workspace/ThingStruct/PRD.md) 为准：ThingStruct 是一个 config-first routine runner，routine 结构由 `Routine Definition` 定义，App 只负责每日选择、物化、展示、提醒和 checklist 执行。
+本文档定义 Samoyed 的 iOS 产品结构、界面层级和术语。当前设计以 [PRD.md](PRD.md) 为准：Samoyed 是一个 config-first routine runner，routine 结构由 `Routine Definition` 定义，App 只负责每日选择、物化、展示、提醒和 checklist 执行。
 
 如果本文档与 PRD 冲突，以 PRD 为准。
 
 ## 1. Design Goal
 
-ThingStruct 的界面目标是让用户稳定运行已经定义好的 routine，而不是在手机上临时规划或编辑一天。
+Samoyed 的界面目标是让用户稳定运行已经定义好的 routine，而不是在手机上临时规划或编辑一天。
 
 UI 应帮助用户完成四件事：
 
@@ -27,7 +27,7 @@ UI 不应承担：
 用户心智应始终是：
 
 1. 我先在配置文件或外部工具里定义 routine。
-2. 我把 Routine Config File 导入 ThingStruct。
+2. 我把 Routine Config File 导入 Samoyed。
 3. 我每天选择一个 routine。
 4. App 把它物化为当天只读结构。
 5. 我只在当天勾选 checklist，完成状态不会改动 routine 本身。

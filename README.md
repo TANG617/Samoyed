@@ -1,12 +1,12 @@
-# ThingStruct Specification
+# Samoyed Specification
 
-本 README 是 ThingStruct 的领域模型与核心算法规格。
+本 README 是 Samoyed 的领域模型与核心算法规格。
 
 文档权威顺序如下：
 
-1. [PRD.md](/Users/timli/workspace/ThingStruct/PRD.md) 定义产品目标、用户、优先级和当前范围。
+1. [PRD.md](PRD.md) 定义产品目标、用户、优先级和当前范围。
 2. 本文档定义数据模型、约束、解析和持久化语义。
-3. [Design.md](/Users/timli/workspace/ThingStruct/Design.md) 定义 UI 如何消费核心语义。
+3. [Design.md](Design.md) 定义 UI 如何消费核心语义。
 4. 系统入口文档只定义阶段性技术方案，不能扩大 PRD 范围。
 
 如果本文档与代码实现冲突，核心规则以本文档为目标；如果本文档与 PRD 在产品行为或优先级上冲突，以 PRD 为准。
@@ -784,7 +784,7 @@
 
 ### 11.1 UI 总体原则
 
-1. 整个 App 必须以 `ThingStructCore` 为唯一业务核心。
+1. 整个 App 必须以 `SamoyedCore` 为唯一业务核心。
 2. SwiftUI 视图层只能读取和提交意图，不能自行计算时间、层级、模板选择或任务来源规则。
 3. 所有 `resolvedStart`、`resolvedEnd`、`activeChain`、`taskSourceBlock`、模板选择结果都必须来自核心层。
 4. 所有编辑动作在提交前都必须经过核心层校验；UI 不得绕过核心规则直接写入非法数据。
@@ -822,7 +822,7 @@
 未来 UI 需要有一个薄适配层，负责：
 
 - 从本地持久化层读取原始数据
-- 组装为 `ThingStructCore` 所需的数据结构
+- 组装为 `SamoyedCore` 所需的数据结构
 - 调用核心算法
 - 将用户编辑意图转换为核心层操作
 - 在核心层校验成功后再写回持久化层
@@ -1116,7 +1116,7 @@ UI 层不应长期缓存：
 
 当前仓库已经统一围绕以下概念构建：
 
-- `ThingStructDocument`
+- `SamoyedDocument`
 - `DayPlan`
 - `TimeBlock`
 - `TaskItem`
@@ -1128,8 +1128,8 @@ UI 层不应长期缓存：
 
 UI 分层原则：
 
-1. `ThingStructStore` 负责文档加载、物化、持久化和用户命令。
-2. `ThingStructPresentation` 负责把核心模型映射成 `Now`、`Today`、`Templates` 所需的 screen model。
+1. `SamoyedStore` 负责文档加载、物化、持久化和用户命令。
+2. `SamoyedPresentation` 负责把核心模型映射成 `Now`、`Today`、`Templates` 所需的 screen model。
 3. root view 只负责页面级状态、导航和 sheet，不重复实现核心推导。
 
 ### 11.10 当前模型约束

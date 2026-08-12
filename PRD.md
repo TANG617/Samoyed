@@ -1,19 +1,19 @@
-# ThingStruct PRD
+# Samoyed PRD
 
 - 版本：Draft v0.3
 - 日期：2026-06-12
 - 状态：Config-first 重构草案
-- 文档目的：重新明确 ThingStruct 的核心方向：routine 结构由配置文件承载的 Routine Definition 定义，App 负责按天选择、编排、展示、提醒与 checklist 执行，不再承担当天日程结构编辑。
+- 文档目的：重新明确 Samoyed 的核心方向：routine 结构由配置文件承载的 Routine Definition 定义，App 负责按天选择、编排、展示、提醒与 checklist 执行，不再承担当天日程结构编辑。
 
 ## 1. 一句话定义
 
-ThingStruct 不是待办清单，也不是日历，也不是手机上的日程编辑器。
+Samoyed 不是待办清单，也不是日历，也不是手机上的日程编辑器。
 
-ThingStruct 是一个单人使用的、由 Routine Definition 定义 routine 的「日常运行系统」：用户每天选择一个 routine，App 将这个 Routine Definition 物化为当天的只读运行结构，并在一天中持续、温和地展示当前状态、固定提示语和 checklist。
+Samoyed 是一个单人使用的、由 Routine Definition 定义 routine 的「日常运行系统」：用户每天选择一个 routine，App 将这个 Routine Definition 物化为当天的只读运行结构，并在一天中持续、温和地展示当前状态、固定提示语和 checklist。
 
 ## 2. 产品本质
 
-ThingStruct 的本质不是“帮用户在手机上规划今天”，而是“把已经定义好的 routine 可靠地运行起来”。
+Samoyed 的本质不是“帮用户在手机上规划今天”，而是“把已经定义好的 routine 可靠地运行起来”。
 
 它服务的不是：
 
@@ -39,7 +39,7 @@ ThingStruct 的本质不是“帮用户在手机上规划今天”，而是“�
 
 ### 3.1 产品类别
 
-ThingStruct 位于以下类别的交叉点：
+Samoyed 位于以下类别的交叉点：
 
 - config-defined routine runner
 - structured lifestyle app
@@ -56,7 +56,7 @@ ThingStruct 位于以下类别的交叉点：
 - 系统帮助排序、归类、提醒
 - 今天要做什么，取决于任务列表里新增了什么
 
-ThingStruct 的底层逻辑是：
+Samoyed 的底层逻辑是：
 
 - 用户或外部工具先用 Routine Definition 定义几种可运行的 routine
 - 用户每天选择一个 routine
@@ -69,7 +69,7 @@ ThingStruct 的底层逻辑是：
 - todo app 的核心是“收集事项”
 - calendar app 的核心是“安排事件”
 - visual planner 的核心是“在界面上编辑结构”
-- ThingStruct 的核心是“运行 Routine Definition 定义的结构”
+- Samoyed 的核心是“运行 Routine Definition 定义的结构”
 
 ## 4. 产品哲学
 
@@ -110,7 +110,7 @@ App 不可以：
 
 ### 4.2 结构状态与执行状态必须分离
 
-ThingStruct 必须清楚区分两类状态：
+Samoyed 必须清楚区分两类状态：
 
 - 结构状态：由 Routine Definition 定义，描述一天应该如何运行。
 - 执行状态：由 App 在某一天本地记录，描述 checklist 是否完成。
@@ -125,7 +125,7 @@ ThingStruct 必须清楚区分两类状态：
 
 ### 4.3 单人绝对成立
 
-ThingStruct 是绝对单人的产品。
+Samoyed 是绝对单人的产品。
 
 这意味着：
 
@@ -138,7 +138,7 @@ ThingStruct 是绝对单人的产品。
 
 ### 4.4 本地优先，但允许外部编排
 
-ThingStruct 不做传统意义上的云同步。
+Samoyed 不做传统意义上的云同步。
 
 正确的模型是：
 
@@ -148,11 +148,11 @@ ThingStruct 不做传统意义上的云同步。
 - 云端不能直接成为产品真相。
 - 云端不能无确认覆盖本地 routine library 或当天执行状态。
 
-这使 ThingStruct 可以天然与 AI 配合，但不会演变成一个依赖远程同步的 SaaS。
+这使 Samoyed 可以天然与 AI 配合，但不会演变成一个依赖远程同步的 SaaS。
 
 ### 4.5 routine-first，而不是 task-first
 
-ThingStruct 优先描述的是 routine，不是一次性任务。
+Samoyed 优先描述的是 routine，不是一次性任务。
 
 适合出现在 Routine Definition 中的是：
 
@@ -162,7 +162,7 @@ ThingStruct 优先描述的是 routine，不是一次性任务。
 - 睡前准备明天的衣服
 - 健身前做热身
 
-不适合出现在 ThingStruct 中的是：
+不适合出现在 Samoyed 中的是：
 
 - 今天 3 点见客户
 - 下周交报告
@@ -173,7 +173,7 @@ ThingStruct 优先描述的是 routine，不是一次性任务。
 
 ### 4.6 手机端是运行终端，不是编排终端
 
-ThingStruct 的手机端重点不是创建或修改结构，而是运行结构。
+Samoyed 的手机端重点不是创建或修改结构，而是运行结构。
 
 端侧应该强调：
 
@@ -195,7 +195,7 @@ ThingStruct 的手机端重点不是创建或修改结构，而是运行结构�
 
 ### 4.7 提醒是配合，不是打断
 
-ThingStruct 的提醒不应像闹钟那样中断用户。
+Samoyed 的提醒不应像闹钟那样中断用户。
 
 它更像一种配合式提示：
 
@@ -306,7 +306,7 @@ App 不提供“临时替换一个 block”“拖动调整时间”“取消某�
 
 ## 8. 产品不是什么
 
-ThingStruct 不是：
+Samoyed 不是：
 
 - 待办应用
 - GTD 工具
@@ -322,7 +322,7 @@ ThingStruct 不是：
 
 ## 9. 产品是什么
 
-ThingStruct 是：
+Samoyed 是：
 
 - 一个 config-defined routine runner
 - 一个“今天运行哪份 routine”的选择器
@@ -335,7 +335,7 @@ ThingStruct 是：
 
 ### 10.1 Routine Definition
 
-`Routine Definition` 是 ThingStruct 中 routine 结构的唯一权威来源。
+`Routine Definition` 是 Samoyed 中 routine 结构的唯一权威来源。
 
 它是格式无关的结构定义，不等同于某一种文件格式。
 
@@ -422,7 +422,7 @@ v1 规则：
 
 ### 10.12 Checklist Item
 
-ThingStruct 中的 checklist item 不是“今天有哪些事”，而是某个 routine 状态里的固定步骤。
+Samoyed 中的 checklist item 不是“今天有哪些事”，而是某个 routine 状态里的固定步骤。
 
 正确示例：
 
@@ -437,7 +437,7 @@ ThingStruct 中的 checklist item 不是“今天有哪些事”，而是某个 
 
 ### 10.13 Note
 
-ThingStruct 中的 note 更像“固定地对自己说的话”，是在某种状态下需要反复被看见的提示语。
+Samoyed 中的 note 更像“固定地对自己说的话”，是在某种状态下需要反复被看见的提示语。
 
 例如：
 
@@ -460,7 +460,7 @@ Execution State 不改变 Routine Definition。
 
 ## 11. 核心生活逻辑
 
-ThingStruct 的核心流程是：
+Samoyed 的核心流程是：
 
 ### 11.1 先准备 routine
 
@@ -484,7 +484,7 @@ App 只负责导入、校验、预览和保存本地副本。
 
 ### 11.4 提示不是命令
 
-当某个时间点到了，ThingStruct 通过以下位置轻轻告诉用户：
+当某个时间点到了，Samoyed 通过以下位置轻轻告诉用户：
 
 - `Now`
 - `Today`
@@ -537,7 +537,7 @@ App 的当天运行界面不承担结构修正职责。
 
 ## 14. 信息架构
 
-ThingStruct 采用三个一级页面。
+Samoyed 采用三个一级页面。
 
 ### 14.1 Now
 
@@ -800,7 +800,7 @@ ThingStruct 采用三个一级页面。
 
 ### 15.11 Widgets
 
-Widget 是 ThingStruct “温和陪伴”的关键系统表面。
+Widget 是 Samoyed “温和陪伴”的关键系统表面。
 
 功能定义：
 
@@ -871,7 +871,7 @@ Live Activity 是“当前这件事正在进行”的持续展示。
 
 ## 17. 信息优先级
 
-ThingStruct 的信息优先级应当始终是：
+Samoyed 的信息优先级应当始终是：
 
 1. 今天运行的是哪一个 routine？
 2. 我现在在哪种状态里？
@@ -910,7 +910,7 @@ ThingStruct 的信息优先级应当始终是：
 
 ## 19. 成功指标
 
-ThingStruct 的成功不应以“新增了多少任务”或“编辑了多少 block”衡量，而应以以下指标衡量：
+Samoyed 的成功不应以“新增了多少任务”或“编辑了多少 block”衡量，而应以以下指标衡量：
 
 - 用户是否拥有多个稳定 Routine Definition
 - 用户是否每天会选择一个 routine
@@ -968,7 +968,7 @@ ThingStruct 的成功不应以“新增了多少任务”或“编辑了多少 b
 
 ## 22. 最终产品主张
 
-ThingStruct 想提供的不是“更多效率”，也不是“更方便地在手机上改日程”，而是“更少犹豫地运行已经想清楚的一天”。
+Samoyed 想提供的不是“更多效率”，也不是“更方便地在手机上改日程”，而是“更少犹豫地运行已经想清楚的一天”。
 
 用户每天不需要在手机上重新规划人生。
 
@@ -982,4 +982,4 @@ ThingStruct 想提供的不是“更多效率”，也不是“更方便地在�
 - 完成 checklist，而不破坏 routine 本身
 - 在需要改进结构时，回到 Routine Definition 层迭代
 
-如果说别的 App 是帮用户“管理事情”，ThingStruct 更像是在帮用户“运行生活”。
+如果说别的 App 是帮用户“管理事情”，Samoyed 更像是在帮用户“运行生活”。
