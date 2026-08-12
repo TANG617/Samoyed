@@ -34,20 +34,20 @@ final class SamoyedP0UITests: XCTestCase {
         XCTAssertFalse(app.navigationBars["Set Up Samoyed"].exists)
     }
 
-    func testTodayDifferentCanChooseNoRoutineWithoutChangingUsualWeek() throws {
+    func testTodayTimelineIsAvailableAfterActivation() throws {
         app.launch()
         XCTAssertTrue(app.buttons["activation-start"].waitForExistence(timeout: 5))
         app.buttons["activation-start"].tap()
+        app.tabBars.buttons["Today"].tap()
 
-        XCTAssertTrue(app.buttons["now-today-different"].waitForExistence(timeout: 5))
-        app.buttons["now-today-different"].tap()
-        XCTAssertTrue(app.buttons["today-no-routine"].waitForExistence(timeout: 3))
-        app.buttons["today-no-routine"].tap()
-
-        XCTAssertTrue(app.staticTexts["Nothing is running today"].waitForExistence(timeout: 3))
+        let afternoon = app.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH %@", "Afternoon")
+        ).firstMatch
+        XCTAssertTrue(afternoon.waitForExistence(timeout: 5))
+        XCTAssertTrue(waitUntilHittable(afternoon))
     }
 
-    func testTodayOnlyCorrectionFlow() throws {
+    func testTodayBlockInspectorFlow() throws {
         app.launch()
         XCTAssertTrue(app.buttons["activation-start"].waitForExistence(timeout: 5))
         app.buttons["activation-start"].tap()
@@ -58,29 +58,9 @@ final class SamoyedP0UITests: XCTestCase {
         ).firstMatch
         XCTAssertTrue(afternoon.waitForExistence(timeout: 5))
         afternoon.tap()
-        XCTAssertTrue(app.buttons["today-edit"].waitForExistence(timeout: 3))
-        app.buttons["today-edit"].tap()
-
-        let title = app.textFields["today-correction-title"]
-        XCTAssertTrue(title.waitForExistence(timeout: 3))
-        title.tap()
-        let existingTitle = title.value as? String ?? ""
-        title.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: existingTitle.count))
-        let correctedTitle = "Afternoon Updated"
-        title.typeText(correctedTitle)
-        let titleCommitted = expectation(
-            for: NSPredicate(format: "value == %@", correctedTitle),
-            evaluatedWith: title
-        )
-        wait(for: [titleCommitted], timeout: 3)
-        app.buttons["today-correction-save"].tap()
-
-        XCTAssertTrue(app.buttons["Close"].waitForExistence(timeout: 3))
-        app.buttons["Close"].tap()
-        let updatedAfternoon = app.buttons.matching(
-            NSPredicate(format: "label BEGINSWITH %@", "Afternoon Updated")
-        ).firstMatch
-        XCTAssertTrue(updatedAfternoon.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["Block Details"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["Checklist"].exists)
+        XCTAssertTrue(app.staticTexts["Reminders"].exists)
     }
 
     func testLoadErrorDoesNotFallBackToSampleData() throws {
@@ -110,6 +90,65 @@ final class SamoyedP0UITests: XCTestCase {
         workday.tap()
         XCTAssertTrue(app.navigationBars["Workday"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Edit"].exists)
+    }
+
+    func testNowRendersSameLayerChecklistItemsInsideOneContinuousGroup() throws {
+        app.launchEnvironment["SAMOYED_UI_TEST_FIXTURE"] = "single-layer-days"
+        app.launchEnvironment["SAMOYED_SIMULATION_MINUTE"] = "816"
+        app.launch()
+
+        let group = app.otherElements["now-checklist-group-layer-0-remaining"]
+        XCTAssertTrue(group.waitForExistence(timeout: 5))
+        XCTAssertEqual(group.buttons.count, 2)
+    }
+
+    func testNextDayKeepsSingleLayerCurrentBlockInView() throws {
+        app.launchEnvironment["SAMOYED_UI_TEST_FIXTURE"] = "single-layer-days"
+        app.launchEnvironment["SAMOYED_SIMULATION_MINUTE"] = "816"
+        app.launch()
+        app.tabBars.buttons["Today"].tap()
+
+        let currentBlock = app.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH %@", "Afternoon")
+        ).firstMatch
+        XCTAssertTrue(currentBlock.waitForExistence(timeout: 5))
+        XCTAssertTrue(waitUntilHittable(currentBlock))
+
+        app.buttons["Next Day"].tap()
+
+        let nextDayCurrentBlock = app.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH %@", "Afternoon")
+        ).firstMatch
+        XCTAssertTrue(nextDayCurrentBlock.waitForExistence(timeout: 5))
+        XCTAssertTrue(waitUntilHittable(nextDayCurrentBlock))
+    }
+
+    func testElasticTimelineMatchesSharedFigmaCoordinatesAt1336() throws {
+        app.launchEnvironment["SAMOYED_UI_TEST_FIXTURE"] = "elastic-timeline"
+        app.launchEnvironment["SAMOYED_SIMULATION_MINUTE"] = "816"
+        app.launch()
+        app.tabBars.buttons["Today"].tap()
+
+        let afternoon = app.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH %@", "Afternoon")
+        ).firstMatch
+        let projectWork = app.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH %@", "Project Work")
+        ).firstMatch
+        let indicator = app.otherElements["today-current-time-indicator"]
+        let hour13 = app.staticTexts["13:00"].firstMatch
+        let hour14 = app.staticTexts["14:00"].firstMatch
+
+        XCTAssertTrue(afternoon.waitForExistence(timeout: 5))
+        XCTAssertTrue(projectWork.waitForExistence(timeout: 5))
+        XCTAssertTrue(indicator.waitForExistence(timeout: 5))
+        XCTAssertTrue(hour13.waitForExistence(timeout: 5))
+        XCTAssertTrue(hour14.waitForExistence(timeout: 5))
+
+        XCTAssertEqual(hour14.frame.minY - hour13.frame.minY, 206, accuracy: 3)
+        XCTAssertEqual(projectWork.frame.minY - afternoon.frame.minY, 68, accuracy: 3)
+        XCTAssertEqual(indicator.frame.midY - projectWork.frame.minY, 82, accuracy: 3)
+        XCTAssertTrue(projectWork.frame.contains(indicator.frame.center))
     }
 
     func testAccessibilityIdentifiersSurviveLargeDynamicType() throws {
@@ -154,5 +193,22 @@ final class SamoyedP0UITests: XCTestCase {
 
         XCTAssertTrue(app.textFields["day-type-name"].exists)
         XCTAssertTrue(app.buttons["activation-start"].exists)
+    }
+
+    private func waitUntilHittable(
+        _ element: XCUIElement,
+        timeout: TimeInterval = 5
+    ) -> Bool {
+        let expectation = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "hittable == true"),
+            object: element
+        )
+        return XCTWaiter.wait(for: [expectation], timeout: timeout) == .completed
+    }
+}
+
+private extension CGRect {
+    var center: CGPoint {
+        CGPoint(x: midX, y: midY)
     }
 }

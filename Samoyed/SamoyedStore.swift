@@ -398,6 +398,9 @@ final class SamoyedStore {
             document.savedTemplates.append(routine)
         }
         try persistDocument()
+        if bootstrapState == .needsActivation {
+            bootstrapState = .ready
+        }
         return routine.id
     }
 
@@ -761,10 +764,13 @@ final class SamoyedStore {
         Task {
             guard #available(iOS 16.1, *) else { return }
             do {
-                _ = try await SamoyedCurrentBlockLiveActivityController.start(
-                    using: .appLive,
+                let outcome = try await SamoyedCurrentBlockLiveActivityController.start(
+                    using: documentRepository,
                     at: referenceDate
                 )
+                if case let .unavailable(reason) = outcome {
+                    presentErrorMessage(reason.userMessage)
+                }
             } catch {
                 presentError(error)
             }
@@ -779,13 +785,13 @@ final class SamoyedStore {
     }
 
     func syncCurrentBlockLiveActivity(referenceDate: Date = .now) {
-        // “sync” 比 “start” 更适合常态刷新：
-        // 如果活动已存在就更新，不存在时按规则新建，不需要时结束。
+        // “sync” 只刷新已经存在的 activity；创建始终留给显式的 start 操作。
+        // 当前 block 不再匹配时会结束旧 activity，避免后台刷新意外创建系统界面。
         Task {
             guard #available(iOS 16.1, *) else { return }
             do {
                 _ = try await SamoyedCurrentBlockLiveActivityController.sync(
-                    using: .appLive,
+                    using: documentRepository,
                     at: referenceDate
                 )
             } catch {

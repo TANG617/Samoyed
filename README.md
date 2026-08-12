@@ -1141,6 +1141,24 @@ UI 分层原则：
 3. root view 可以持有局部 presentation state，例如选中的分段、当前 sheet、编辑草稿，但不直接承担规则计算。
 4. 对未来日期的模板变更只影响重新物化或显式 regenerate 的 day plan；已经存在的日计划继续作为快照保留。
 
+### 11.11 远程 Routine Config 导入
+
+外部编排器可以通过以下 deep link 打开确认式导入流程：
+
+```text
+samoyed://import-routine?url=<percent-encoded-https-url>&title=<percent-encoded-title>
+```
+
+规则：
+
+1. `url` 必填，`title` 可选。
+2. 正式构建只接受 HTTPS；Debug 构建额外接受 localhost / `127.0.0.1` / `::1` HTTP，供模拟器本地验证。
+3. 只接受成功的 HTTP 响应、UTF-8 文本且不超过 512 KB。
+4. 跳转后的最终 URL 仍需通过同一传输校验，避免重定向绕过 HTTPS 约束。
+5. YAML 必须先通过 `SamoyedPortableDayBlocks` 的结构与时间校验，再展示来源、block 和 checklist 摘要。
+6. deep link 不直接写入数据；用户必须在 App 内确认 Import、Replace 或 Keep Both。
+7. 导入只加入本地 Routine Library，不修改当天 Materialized Day 或 Execution State，也不与远程 URL 建立持续同步。
+
 ## 12. 当前阶段不实现的 UI 与平台集成
 
 当前代码已经包含 App UI 与多种系统入口。本节定义产品开发优先级，而不是描述代码是否存在。

@@ -314,10 +314,11 @@ private struct SamoyedNowWidgetEntryView: View {
 
         return Toggle(
             isOn: item.isCompleted,
-            intent: ToggleTaskCompletionIntent(
+            intent: SetWidgetTaskCompletionIntent(
                 dateISO: item.dateISO,
                 blockID: item.blockID,
-                taskID: item.taskID
+                taskID: item.taskID,
+                isCompleted: !item.isCompleted
             )
         ) {
             HStack(spacing: 7) {

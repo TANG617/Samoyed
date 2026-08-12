@@ -108,35 +108,6 @@ struct CompleteCurrentTaskIntent: AppIntent {
     }
 }
 
-// 从快捷指令中启动 Live Activity。
-struct StartCurrentBlockLiveActivityIntent: AppIntent {
-    static let title: LocalizedStringResource = "Start Live Activity"
-    static let description = IntentDescription("Start a Live Activity for the current block.")
-    static let openAppWhenRun = false
-
-    func perform() async throws -> some IntentResult & ProvidesDialog {
-        // `#available` 是 Swift 常见的运行时平台可用性检查。
-        // iOS API 经常按系统版本逐步开放，所以你会在项目里频繁看到它。
-        guard #available(iOS 16.1, *) else {
-            return .result(dialog: "Live Activities aren't available on this device.")
-        }
-
-        let started = try await SamoyedCurrentBlockLiveActivityController.start(
-            using: .appLive,
-            at: .now
-        )
-        WidgetCenter.shared.reloadTimelines(ofKind: SamoyedSharedConfig.widgetKind)
-
-        return .result(
-            dialog: IntentDialog(
-                started
-                    ? "Started tracking the current block."
-                    : "There isn't an active block to track right now."
-            )
-        )
-    }
-}
-
 // 结束当前 Live Activity。
 struct EndCurrentBlockLiveActivityIntent: AppIntent {
     static let title: LocalizedStringResource = "End Live Activity"

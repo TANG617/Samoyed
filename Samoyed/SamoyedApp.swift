@@ -40,9 +40,17 @@ struct ContentView: View {
     // SwiftUI 的 `View` 是值类型，会频繁被重建；如果这里不用 `@State`，
     // `store` 会在每次重绘时重新创建，整个应用状态就丢了。
     @State private var store: SamoyedStore
+    @State private var remoteRoutineImportRequest: RemoteRoutineImportRequest?
+    @State private var pendingRemoteRoutineImport: PendingRemoteRoutineImport?
+    @State private var isLoadingRemoteRoutineImport = false
+
+    private let remoteRoutineConfigLoader: SamoyedRemoteRoutineConfigLoader
 
     @MainActor
-    init(store: SamoyedStore? = nil) {
+    init(
+        store: SamoyedStore? = nil,
+        remoteRoutineConfigLoader: SamoyedRemoteRoutineConfigLoader = .init()
+    ) {
         // `@MainActor` 表示这个初始化过程要求在主线程/主 actor 上运行。
         // UI 相关对象通常都应该这么做，避免线程竞争和 UI 读写越界。
         #if DEBUG
@@ -51,6 +59,9 @@ struct ContentView: View {
         let resolvedStore = store ?? SamoyedStore()
         #endif
         _store = State(initialValue: resolvedStore)
+        _remoteRoutineImportRequest = State(initialValue: nil)
+        _pendingRemoteRoutineImport = State(initialValue: nil)
+        self.remoteRoutineConfigLoader = remoteRoutineConfigLoader
     }
 
     var body: some View {
@@ -88,6 +99,9 @@ struct ContentView: View {
                 consumePendingExternalRoute()
                 SamoyedSystemSurfaceDormancy.apply()
             }
+            .task(id: remoteRoutineImportRequest?.id) {
+                await loadRemoteRoutineImportIfNeeded()
+            }
             // 当系统用 URL 打开 app 时，这里会收到回调。
             // iOS 的 deep link、widget 点击、shortcut 跳转，很多最终都会落到这里。
             .onOpenURL(perform: applyExternalURL)
@@ -106,6 +120,15 @@ struct ContentView: View {
                 guard newPhase == .active, store.isLoaded else { return }
                 store.reload()
                 consumePendingExternalRoute()
+            }
+            .sheet(item: $pendingRemoteRoutineImport) { pendingImport in
+                RemoteRoutineImportPreviewSheet(pendingImport: pendingImport)
+                    .environment(store)
+            }
+            .overlay {
+                if isLoadingRemoteRoutineImport {
+                    RemoteRoutineImportLoadingOverlay()
+                }
             }
     }
 
@@ -138,11 +161,50 @@ struct ContentView: View {
         case .library:
             store.showLibrary()
 
+        case let .importRoutine(remoteURL, title, _):
+            remoteRoutineImportRequest = RemoteRoutineImportRequest(
+                remoteURL: remoteURL,
+                suggestedTitle: title
+            )
+
         case .startCurrentBlockLiveActivity:
-            store.startCurrentBlockLiveActivity()
+            store.startCurrentBlockLiveActivity(
+                referenceDate: SamoyedSimulationClock.adjusted(.now)
+            )
 
         case .endCurrentBlockLiveActivity:
             store.endCurrentBlockLiveActivity()
+        }
+    }
+
+    private func loadRemoteRoutineImportIfNeeded() async {
+        guard let request = remoteRoutineImportRequest else { return }
+
+        isLoadingRemoteRoutineImport = true
+        defer {
+            if remoteRoutineImportRequest?.id == request.id {
+                isLoadingRemoteRoutineImport = false
+            }
+        }
+
+        do {
+            let loadedConfig = try await remoteRoutineConfigLoader.load(from: request.remoteURL)
+            try Task.checkCancellation()
+            let summary = try store.previewRoutineConfigImport(loadedConfig.yaml)
+            try Task.checkCancellation()
+            guard remoteRoutineImportRequest?.id == request.id else { return }
+
+            pendingRemoteRoutineImport = PendingRemoteRoutineImport(
+                sourceURL: loadedConfig.sourceURL,
+                yaml: loadedConfig.yaml,
+                summary: summary,
+                suggestedTitle: request.resolvedTitle
+            )
+        } catch is CancellationError {
+            return
+        } catch {
+            guard remoteRoutineImportRequest?.id == request.id else { return }
+            store.presentError(error)
         }
     }
 }

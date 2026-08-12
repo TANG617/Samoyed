@@ -39,52 +39,87 @@ struct SamoyedCurrentBlockActivityAttributes: ActivityAttributes {
 // - 决定应该启动、更新还是结束 activity
 // - 保证同一时刻不会残留多份重复 activity
 @available(iOS 16.1, *)
+enum SamoyedLiveActivityStartOutcome: Equatable, Sendable {
+    case startedOrUpdated
+    case unavailable(SamoyedLiveActivityEligibility)
+
+    var userMessage: String {
+        switch self {
+        case .startedOrUpdated:
+            return "Started tracking the current block."
+        case let .unavailable(reason):
+            return reason.userMessage
+        }
+    }
+}
+
+@available(iOS 16.1, *)
 enum SamoyedCurrentBlockLiveActivityController {
     static func start(
         using repository: SamoyedDocumentRepository = .appLive,
         at date: Date = .now
-    ) async throws -> Bool {
-        // 当前实现把“start”统一复用成一次 `sync`：
-        // 有活动就更新，没有就新建，不该显示时就结束。
-        try await sync(using: repository, at: date)
-    }
-
-    static func sync(
-        using repository: SamoyedDocumentRepository = .appLive,
-        at date: Date = .now
-    ) async throws -> Bool {
-        // 如果系统层面禁用了 Live Activity，就立即清理所有现有 activity。
-        guard ActivityAuthorizationInfo().areActivitiesEnabled else {
-            await endAll()
-            return false
-        }
-
+    ) async throws -> SamoyedLiveActivityStartOutcome {
+        let activitiesEnabled = ActivityAuthorizationInfo().areActivitiesEnabled
         let snapshot = try repository.liveActivitySnapshot(at: date)
-        guard let payload = payload(from: snapshot, referenceDate: date) else {
-            // 没有可展示的当前 block 时，结束 activity 比保留旧内容更安全。
+        let eligibility = SamoyedLiveActivityPolicy.eligibility(
+            for: snapshot,
+            activitiesEnabled: activitiesEnabled
+        )
+
+        guard eligibility == .eligible else {
             await endAll()
-            return false
+            return .unavailable(eligibility)
         }
 
-        // 如果已经存在同一个日期、同一个 block 的 activity，就原地更新。
-        if let existing = Activity<SamoyedCurrentBlockActivityAttributes>.activities.first(
-            where: {
-                $0.attributes.currentBlockID == payload.attributes.currentBlockID &&
-                    $0.attributes.dateISO == payload.attributes.dateISO
-            }
-        ) {
+        guard let payload = payload(from: snapshot, referenceDate: date) else {
+            await endAll()
+            return .unavailable(.noCurrentBlock)
+        }
+
+        if let existing = matchingActivity(for: payload) {
             await existing.update(payload.content)
             await endAll(excluding: existing.id)
-            return true
+            return .startedOrUpdated
         }
 
-        // 否则先清空旧 activity，再请求创建新的。
         await endAll()
         _ = try Activity.request(
             attributes: payload.attributes,
             content: payload.content,
             pushType: nil
         )
+        return .startedOrUpdated
+    }
+
+    static func sync(
+        using repository: SamoyedDocumentRepository = .appLive,
+        at date: Date = .now
+    ) async throws -> Bool {
+        // Sync is update-only. Starting is always an explicit user action.
+        guard !Activity<SamoyedCurrentBlockActivityAttributes>.activities.isEmpty else {
+            return false
+        }
+
+        let snapshot = try repository.liveActivitySnapshot(at: date)
+        let eligibility = SamoyedLiveActivityPolicy.eligibility(
+            for: snapshot,
+            activitiesEnabled: ActivityAuthorizationInfo().areActivitiesEnabled
+        )
+        guard eligibility == .eligible,
+              let payload = payload(from: snapshot, referenceDate: date)
+        else {
+            await endAll()
+            return false
+        }
+
+        guard let existing = matchingActivity(for: payload) else {
+            // Attributes are immutable. A new block needs a new explicit start.
+            await endAll()
+            return false
+        }
+
+        await existing.update(payload.content)
+        await endAll(excluding: existing.id)
         return true
     }
 
@@ -142,6 +177,15 @@ enum SamoyedCurrentBlockLiveActivityController {
         )
 
         return Payload(attributes: attributes, content: content)
+    }
+
+    private static func matchingActivity(
+        for payload: Payload
+    ) -> Activity<SamoyedCurrentBlockActivityAttributes>? {
+        Activity<SamoyedCurrentBlockActivityAttributes>.activities.first {
+            $0.attributes.currentBlockID == payload.attributes.currentBlockID &&
+                $0.attributes.dateISO == payload.attributes.dateISO
+        }
     }
 }
 

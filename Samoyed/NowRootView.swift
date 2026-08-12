@@ -56,7 +56,15 @@ struct NowRootView: View {
             }
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    Button {
+                        store.startCurrentBlockLiveActivity(
+                            referenceDate: SamoyedSimulationClock.adjusted(.now)
+                        )
+                    } label: {
+                        Label("Start Live Activity", systemImage: "waveform.path.ecg.rectangle")
+                    }
+
                     Menu {
                         Picker("Checklist Filter", selection: $taskFilter) {
                             ForEach(NowTaskFilter.allCases) { filter in
@@ -423,47 +431,26 @@ private struct NowNoteRow: View {
     }
 }
 
-private struct NowTaskRowModel: Identifiable {
-    let blockID: UUID
-    let layerIndex: Int
-    let task: TaskItem
-
-    var id: UUID { task.id }
-}
-
 private struct NowTasksSection: View {
     let sections: [NowTaskSection]
     let filter: NowTaskFilter
     let statusMessage: String?
     let onToggle: (UUID, UUID) -> Void
 
-    private var allTasks: [NowTaskRowModel] {
-        sections
-            .flatMap { section in
-                section.tasks.map {
-                    NowTaskRowModel(blockID: section.id, layerIndex: section.layerIndex, task: $0)
-                }
-            }
-            .sorted { lhs, rhs in
-                if lhs.task.isCompleted != rhs.task.isCompleted {
-                    return !lhs.task.isCompleted
-                }
-                if lhs.layerIndex != rhs.layerIndex {
-                    return lhs.layerIndex > rhs.layerIndex
-                }
-                if lhs.task.order != rhs.task.order {
-                    return lhs.task.order < rhs.task.order
-                }
-                return lhs.task.id.uuidString < rhs.task.id.uuidString
-            }
+    private var allTasks: [NowChecklistDisplayItem] {
+        NowChecklistDisplayBuilder.sortedItems(from: sections)
     }
 
-    private var visibleTasks: [NowTaskRowModel] {
+    private var visibleTasks: [NowChecklistDisplayItem] {
         switch filter {
         case .all: allTasks
         case .remaining: allTasks.filter { !$0.task.isCompleted }
         case .completed: allTasks.filter { $0.task.isCompleted }
         }
+    }
+
+    private var visibleGroups: [NowChecklistDisplayGroup] {
+        NowChecklistDisplayBuilder.groups(from: visibleTasks)
     }
 
     private var emptyDescription: String {
@@ -498,26 +485,12 @@ private struct NowTasksSection: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
             } else {
-                VStack(spacing: 0) {
-                    ForEach(Array(visibleTasks.enumerated()), id: \.element.id) { index, row in
-                        NowTaskRow(row: row) {
+                VStack(spacing: 10) {
+                    ForEach(visibleGroups) { group in
+                        NowTaskGroup(group: group) { row in
                             onToggle(row.blockID, row.task.id)
                         }
-
-                        if index < visibleTasks.count - 1 {
-                            Divider()
-                                .padding(.leading, 50)
-                        }
                     }
-                }
-                .background(
-                    Color(uiColor: .systemBackground),
-                    in: RoundedRectangle(cornerRadius: 18, style: .continuous)
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(Color(uiColor: .separator).opacity(0.12), lineWidth: 0.75)
                 }
             }
         }
@@ -525,10 +498,58 @@ private struct NowTasksSection: View {
     }
 }
 
+private struct NowTaskGroup: View {
+    @Environment(\.samoyedTintPreset) private var tintPreset
+
+    let group: NowChecklistDisplayGroup
+    let onToggle: (NowChecklistDisplayItem) -> Void
+
+    private var style: LayerVisualStyle {
+        LayerVisualStyle.forBlock(
+            layerIndex: group.layerIndex,
+            isBlank: false,
+            preset: tintPreset
+        )
+    }
+
+    private var shape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: 18, style: .continuous)
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(group.items.enumerated()), id: \.element.id) { index, row in
+                NowTaskRow(row: row) {
+                    onToggle(row)
+                }
+
+                if index < group.items.count - 1 {
+                    Divider()
+                        .padding(.leading, 50)
+                }
+            }
+        }
+        .background(group.isCompleted ? Color(uiColor: .secondarySystemBackground) : style.surface)
+        .clipShape(shape)
+        .overlay {
+            shape.stroke(
+                group.isCompleted
+                    ? Color(uiColor: .separator).opacity(0.12)
+                    : style.border.opacity(0.2),
+                lineWidth: 0.75
+            )
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(
+            "now-checklist-group-layer-\(group.layerIndex)-\(group.isCompleted ? "completed" : "remaining")"
+        )
+    }
+}
+
 private struct NowTaskRow: View {
     @Environment(\.samoyedTintPreset) private var tintPreset
 
-    let row: NowTaskRowModel
+    let row: NowChecklistDisplayItem
     let onToggle: () -> Void
 
     private var style: LayerVisualStyle {
@@ -553,11 +574,6 @@ private struct NowTaskRow: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 13)
-            .background(
-                row.task.isCompleted
-                    ? Color(uiColor: .secondarySystemBackground)
-                    : style.surface
-            )
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

@@ -68,6 +68,11 @@ enum SamoyedSystemRoute: Equatable, Sendable {
         source: SamoyedSystemSource? = nil
     )
     case library(source: SamoyedSystemSource? = nil)
+    case importRoutine(
+        remoteURL: URL,
+        title: String? = nil,
+        source: SamoyedSystemSource? = nil
+    )
     case startCurrentBlockLiveActivity(source: SamoyedSystemSource? = nil)
     case endCurrentBlockLiveActivity(source: SamoyedSystemSource? = nil)
 
@@ -101,6 +106,20 @@ enum SamoyedSystemRoute: Equatable, Sendable {
 
         case "library":
             self = .library(source: source)
+
+        case "import-routine":
+            guard
+                let remoteURLText = components.queryItems?.value(for: "url"),
+                let remoteURL = URL(string: remoteURLText),
+                remoteURL.scheme != nil
+            else {
+                return nil
+            }
+            self = .importRoutine(
+                remoteURL: remoteURL,
+                title: components.queryItems?.value(for: "title")?.samoyedNilIfBlank,
+                source: source
+            )
 
         case "start-live-activity":
             self = .startCurrentBlockLiveActivity(source: source)
@@ -137,6 +156,14 @@ enum SamoyedSystemRoute: Equatable, Sendable {
             components.host = "library"
             components.queryItems = queryItems(source: source)
 
+        case let .importRoutine(remoteURL, title, source):
+            components.host = "import-routine"
+            components.queryItems = queryItems(
+                remoteURL: remoteURL,
+                routineTitle: title,
+                source: source
+            )
+
         case let .startCurrentBlockLiveActivity(source):
             components.host = "start-live-activity"
             components.queryItems = queryItems(source: source)
@@ -153,6 +180,8 @@ enum SamoyedSystemRoute: Equatable, Sendable {
         date: LocalDay? = nil,
         blockID: UUID? = nil,
         taskID: UUID? = nil,
+        remoteURL: URL? = nil,
+        routineTitle: String? = nil,
         source: SamoyedSystemSource? = nil
     ) -> [URLQueryItem]? {
         // 只有非 nil 的参数才写进 URL，保持生成的 deep link 简洁。
@@ -167,11 +196,24 @@ enum SamoyedSystemRoute: Equatable, Sendable {
         if let taskID {
             items.append(URLQueryItem(name: "task", value: taskID.uuidString))
         }
+        if let remoteURL {
+            items.append(URLQueryItem(name: "url", value: remoteURL.absoluteString))
+        }
+        if let routineTitle = routineTitle?.samoyedNilIfBlank {
+            items.append(URLQueryItem(name: "title", value: routineTitle))
+        }
         if let source {
             items.append(URLQueryItem(name: "source", value: source.rawValue))
         }
 
         return items.isEmpty ? nil : items
+    }
+}
+
+private extension String {
+    var samoyedNilIfBlank: String? {
+        let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 }
 

@@ -19,6 +19,11 @@
 	<string>$(SAMOYED_APP_GROUP_ID)</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<key>UIBackgroundModes</key>
 	<array/>
 </dict>

@@ -185,6 +185,50 @@ extension SamoyedDocumentRepository {
     }
 
     @discardableResult
+    func setTaskCompletion(
+        on date: LocalDay,
+        blockID: UUID,
+        taskID: UUID,
+        isCompleted: Bool,
+        completedAt: Date = .now
+    ) throws -> Bool {
+        guard try load() != nil else {
+            return false
+        }
+
+        let outcome = try mutate { document in
+            let prepared = try materializedDocument(
+                from: document,
+                for: date,
+                generatedAt: completedAt
+            )
+            document = prepared.document
+
+            guard let planIndex = document.dayPlans.firstIndex(where: { $0.date == date }) else {
+                return false
+            }
+            guard let blockIndex = document.dayPlans[planIndex].blocks.firstIndex(where: { $0.id == blockID }) else {
+                return false
+            }
+            guard let taskIndex = document.dayPlans[planIndex].blocks[blockIndex].tasks.firstIndex(where: { $0.id == taskID }) else {
+                return false
+            }
+
+            let task = document.dayPlans[planIndex].blocks[blockIndex].tasks[taskIndex]
+            guard task.isCompleted != isCompleted else {
+                return false
+            }
+
+            document.dayPlans[planIndex].blocks[blockIndex].tasks[taskIndex].isCompleted = isCompleted
+            document.dayPlans[planIndex].blocks[blockIndex].tasks[taskIndex].completedAt = isCompleted ? completedAt : nil
+            document.dayPlans[planIndex].hasUserEdits = true
+            return true
+        }
+
+        return outcome.value
+    }
+
+    @discardableResult
     func completeTask(
         on date: LocalDay,
         blockID: UUID,

@@ -39,6 +39,27 @@ final class SystemSupportTests: XCTestCase {
         XCTAssertNil(SamoyedSystemRoute(url: try XCTUnwrap(URL(string: "samoyed:///today"))))
     }
 
+    func testSystemRouteRoundTripsRemoteRoutineImportURL() throws {
+        let remoteURL = try XCTUnwrap(
+            URL(string: "https://example.com/routines/workday.yml?revision=3&locale=zh-CN")
+        )
+        let route = SamoyedSystemRoute.importRoutine(
+            remoteURL: remoteURL,
+            title: "标准工作日",
+            source: .app
+        )
+        let deepLink = try XCTUnwrap(route.url)
+
+        XCTAssertEqual(SamoyedSystemRoute(url: deepLink), route)
+        XCTAssertTrue(deepLink.absoluteString.hasPrefix("samoyed://import-routine?"))
+    }
+
+    func testSystemRouteRejectsRemoteRoutineImportWithoutURL() throws {
+        let deepLink = try XCTUnwrap(URL(string: "samoyed://import-routine?title=Workday"))
+
+        XCTAssertNil(SamoyedSystemRoute(url: deepLink))
+    }
+
     func testDocumentRepositoryLoadsSavesAndMutatesUsingFileURL() throws {
         let fileURL = FileManager.default.temporaryDirectory
             .appending(path: "SamoyedTests")

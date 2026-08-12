@@ -7,6 +7,7 @@ struct TodayRootView: View {
     @State private var jumpToCurrentTrigger = 0
     @State private var scrollToBlockTrigger = 0
     @State private var scrollToBlockID: UUID?
+    @State private var dateNavigationScrollMinute: Int?
 
     var body: some View {
         NavigationStack {
@@ -63,11 +64,13 @@ struct TodayRootView: View {
 
     private func timelineContent(model: TodayScreenModel) -> some View {
         let referenceDate = SamoyedSimulationClock.adjusted(.now)
+        let currentMinute = store.currentMinuteOnSelectedDate(currentDate: referenceDate)
         return TodayTimelineView(
             model: model,
             selectedBlockID: selection?.blockID,
             selectedOpenSlotID: selection?.openSlotID,
-            currentMinute: store.currentMinuteOnSelectedDate(currentDate: referenceDate),
+            currentMinute: currentMinute,
+            dateNavigationScrollMinute: dateNavigationScrollMinute,
             jumpToCurrentTrigger: jumpToCurrentTrigger,
             scrollToBlockID: scrollToBlockID,
             scrollToBlockTrigger: scrollToBlockTrigger,
@@ -86,6 +89,7 @@ struct TodayRootView: View {
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button {
+                    preserveTimelinePosition(model: model, currentMinute: currentMinute)
                     store.moveSelectedDate(by: -1)
                 } label: {
                     Label("Previous Day", systemImage: "chevron.left")
@@ -111,6 +115,7 @@ struct TodayRootView: View {
                 }
 
                 Button {
+                    preserveTimelinePosition(model: model, currentMinute: currentMinute)
                     store.moveSelectedDate(by: 1)
                 } label: {
                     Label("Next Day", systemImage: "chevron.right")
@@ -221,6 +226,15 @@ struct TodayRootView: View {
         jumpToCurrentTrigger += 1
     }
 
+    private func preserveTimelinePosition(
+        model: TodayScreenModel,
+        currentMinute: Int?
+    ) {
+        dateNavigationScrollMinute = currentMinute
+            ?? dateNavigationScrollMinute
+            ?? model.initialScrollMinute
+    }
+
     private func handleBlockSelection(_ blockID: UUID) {
         store.selectBlock(blockID)
         selection = .block(id: blockID)
@@ -278,75 +292,65 @@ private enum TodaySelection: Identifiable, Equatable {
 }
 
 private struct TodayTimelineScale {
-    let startHour: Int
-    let endHour: Int
-    let activeHours: Set<Int>
-
-    private let denseHourHeight: CGFloat = 76
-    private let quietHourHeight: CGFloat = 50
-    let topInset: CGFloat = 14
-    let bottomInset: CGFloat = 18
+    private let mapping: TimelineElasticTimeScale
 
     init(model: TodayScreenModel, currentMinute: Int?) {
-        let activeRanges = model.blocks.map { ($0.startMinuteOfDay, $0.endMinuteOfDay) }
-        let ranges = activeRanges
-            + model.openSlots.map { ($0.startMinuteOfDay, $0.endMinuteOfDay) }
-        let rangeMinutes = ranges.flatMap { [$0.0, $0.1] } + [currentMinute].compactMap { $0 }
-        let earliest = rangeMinutes.min() ?? 7 * 60
-        let latest = rangeMinutes.max() ?? 18 * 60
+        mapping = TimelineElasticTimeScale(
+            blocks: model.blocks,
+            openSlots: model.openSlots,
+            currentMinute: currentMinute
+        )
+    }
 
-        startHour = max(0, earliest / 60 - 1)
-        endHour = min(24, Int(ceil(Double(latest) / 60.0)) + 1)
+    var startHour: Int {
+        mapping.startHour
+    }
 
-        var occupied = Set<Int>()
-        for (start, end) in activeRanges {
-            let firstHour = max(0, start / 60)
-            let lastHour = min(23, max(firstHour, (max(start + 1, end) - 1) / 60))
-            occupied.formUnion(firstHour ... lastHour)
-        }
-        if let currentMinute {
-            occupied.insert(max(0, min(23, currentMinute / 60)))
-        }
-        activeHours = occupied
+    var endHour: Int {
+        mapping.endHour
+    }
+
+    var topInset: CGFloat {
+        CGFloat(mapping.topInset)
+    }
+
+    var bottomInset: CGFloat {
+        CGFloat(mapping.bottomInset)
     }
 
     var hours: [Int] {
-        Array(startHour ... endHour)
+        mapping.hours
     }
 
     var canvasHeight: CGFloat {
-        topInset
-            + (startHour ..< endHour).reduce(CGFloat.zero) { $0 + hourHeight(for: $1) }
-            + bottomInset
+        CGFloat(mapping.canvasHeight)
     }
 
     func yPosition(for minute: Int) -> CGFloat {
-        let clamped = max(startHour * 60, min(endHour * 60, minute))
-        let fullHour = min(endHour, clamped / 60)
-        let completedHeight = (startHour ..< fullHour).reduce(CGFloat.zero) {
-            $0 + hourHeight(for: $1)
-        }
-        guard fullHour < endHour else {
-            return topInset + completedHeight
-        }
-        let fraction = CGFloat(clamped - fullHour * 60) / 60
-        return topInset + completedHeight + hourHeight(for: fullHour) * fraction
+        CGFloat(mapping.yPosition(for: minute))
     }
 
     func distance(from startMinute: Int, to endMinute: Int) -> CGFloat {
-        max(0, yPosition(for: endMinute) - yPosition(for: startMinute))
+        CGFloat(mapping.distance(from: startMinute, to: endMinute))
     }
 
     func hourHeight(for hour: Int) -> CGFloat {
-        activeHours.contains(hour) ? denseHourHeight : quietHourHeight
+        CGFloat(mapping.hourHeight(for: hour))
     }
 }
 
+private struct TodayTimelineScrollAnchor: Hashable {
+    let minute: Int
+}
+
 private struct TodayTimelineView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     let model: TodayScreenModel
     let selectedBlockID: UUID?
     let selectedOpenSlotID: UUID?
     let currentMinute: Int?
+    let dateNavigationScrollMinute: Int?
     let jumpToCurrentTrigger: Int
     let scrollToBlockID: UUID?
     let scrollToBlockTrigger: Int
@@ -358,7 +362,8 @@ private struct TodayTimelineView: View {
     @State private var lastInitialScrollDate: LocalDay?
 
     private let labelWidth: CGFloat = 52
-    private let trackInset: CGFloat = 12
+    private let trackLeadingInset: CGFloat = 12
+    private let trackTrailingInset: CGFloat = 22
 
     private var scale: TodayTimelineScale {
         TodayTimelineScale(model: model, currentMinute: currentMinute)
@@ -367,29 +372,34 @@ private struct TodayTimelineView: View {
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                GeometryReader { geometry in
-                    ZStack(alignment: .topLeading) {
-                        Color.clear
-                            .contentShape(Rectangle())
-                            .onTapGesture(perform: onClearSelection)
+                ZStack(alignment: .topLeading) {
+                    timelineScrollAnchors
 
-                        hourGrid
+                    GeometryReader { geometry in
+                        ZStack(alignment: .topLeading) {
+                            Color.clear
+                                .contentShape(Rectangle())
+                                .onTapGesture(perform: onClearSelection)
 
-                        ForEach(model.openSlots) { slot in
-                            timelineOpenSlot(slot, canvasWidth: geometry.size.width)
+                            hourGrid
+
+                            ForEach(model.openSlots) { slot in
+                                timelineOpenSlot(slot, canvasWidth: geometry.size.width)
+                            }
+
+                            ForEach(rootNodes) { node in
+                                timelineBlock(node, canvasWidth: geometry.size.width)
+                            }
+
+                            if let currentMinute {
+                                currentTimeLine(minute: currentMinute, canvasWidth: geometry.size.width)
+                                    .zIndex(100)
+                                    .allowsHitTesting(false)
+                            }
                         }
-
-                        ForEach(rootNodes) { node in
-                            timelineBlock(node, canvasWidth: geometry.size.width)
-                        }
-
-                        if let currentMinute {
-                            currentTimeLine(minute: currentMinute, canvasWidth: geometry.size.width)
-                                .zIndex(100)
-                                .allowsHitTesting(false)
-                        }
+                        .frame(width: geometry.size.width, height: canvasHeight, alignment: .topLeading)
+                        .animation(timelineAnimation, value: currentMinute)
                     }
-                    .frame(width: geometry.size.width, height: canvasHeight, alignment: .topLeading)
                 }
                 .frame(height: canvasHeight)
             }
@@ -398,7 +408,14 @@ private struct TodayTimelineView: View {
                 guard lastInitialScrollDate != model.date else { return }
                 lastInitialScrollDate = model.date
 
-                if let focusBlockID = model.initialFocusBlockID,
+                if let dateNavigationScrollMinute {
+                    scroll(
+                        to: dateNavigationScrollMinute,
+                        anchor: .center,
+                        proxy: proxy,
+                        animated: false
+                    )
+                } else if let focusBlockID = model.initialFocusBlockID,
                    let fallbackMinute = currentMinute ?? model.blocks.first(where: { $0.id == focusBlockID })?.startMinuteOfDay {
                     scroll(
                         toBlock: focusBlockID,
@@ -439,40 +456,65 @@ private struct TodayTimelineView: View {
         }
     }
 
+    private var timelineScrollAnchors: some View {
+        VStack(spacing: 0) {
+            Color.clear
+                .frame(height: scale.topInset)
+
+            ForEach(Array(scrollAnchorMinutes.dropLast().enumerated()), id: \.element) { index, minute in
+                let nextMinute = scrollAnchorMinutes[index + 1]
+                let segmentHeight = scale.distance(from: minute, to: nextMinute)
+                VStack(spacing: 0) {
+                    Color.clear
+                        .frame(height: min(1, segmentHeight))
+                        .id(TodayTimelineScrollAnchor(minute: minute))
+
+                    Color.clear
+                        .frame(height: max(0, segmentHeight - 1))
+                }
+            }
+
+            Color.clear
+                .frame(height: 1)
+                .id(TodayTimelineScrollAnchor(minute: scale.endHour * 60))
+
+            Color.clear
+                .frame(height: max(0, scale.bottomInset - 1))
+        }
+        .frame(maxWidth: .infinity)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
     private var hourGrid: some View {
         ForEach(scale.hours, id: \.self) { hour in
             let y = scale.yPosition(for: hour * 60)
-            HStack(spacing: 0) {
-                Text(hourLabel(for: hour))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .frame(width: labelWidth, alignment: .leading)
-                    .offset(y: -8)
-
-                Rectangle()
-                    .fill(Color.secondary.opacity(0.12))
-                    .frame(height: 1)
-            }
-            .frame(height: 1)
-            .offset(y: y)
-            .id(hour)
+            Text(hourLabel(for: hour))
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .frame(width: labelWidth - 4, alignment: .leading)
+                .offset(x: 4, y: y)
         }
     }
 
     private func currentTimeLine(minute: Int, canvasWidth: CGFloat) -> some View {
         let y = scale.yPosition(for: minute)
-        return HStack(spacing: 0) {
+        return ZStack(alignment: .leading) {
+            Rectangle()
+                .fill(.red)
+                .frame(width: max(0, canvasWidth - labelWidth), height: 2)
+                .offset(x: labelWidth)
+
             Circle()
                 .fill(.red)
                 .frame(width: 8, height: 8)
                 .offset(x: labelWidth - 4)
-
-            Rectangle()
-                .fill(.red)
-                .frame(height: 2)
         }
-        .frame(width: canvasWidth, alignment: .leading)
-        .offset(y: y)
+        .frame(width: canvasWidth, height: 8, alignment: .leading)
+        .offset(y: y - 4)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Current time, \(minute.formattedTime)")
+        .accessibilityIdentifier("today-current-time-indicator")
     }
 
     private func timelineBlock(_ node: TodayTimelineNode, canvasWidth: CGFloat) -> some View {
@@ -492,7 +534,10 @@ private struct TodayTimelineView: View {
             startDelta: startDelta
         )
         let y = scale.yPosition(for: displayedStartMinuteOfDay)
-        let blockWidth = max(0, canvasWidth - labelWidth - trackInset * 2)
+        let blockWidth = max(
+            0,
+            canvasWidth - labelWidth - trackLeadingInset - trackTrailingInset
+        )
 
         return TimelineBlockCard(
             node: node,
@@ -506,12 +551,15 @@ private struct TodayTimelineView: View {
             onSelect: onSelectBlock
         )
         .frame(width: blockWidth, alignment: .leading)
-        .offset(x: labelWidth + trackInset, y: y)
+        .offset(x: labelWidth + trackLeadingInset, y: y)
     }
 
     private func timelineOpenSlot(_ slot: TodayOpenSlotItem, canvasWidth: CGFloat) -> some View {
         let y = scale.yPosition(for: slot.startMinuteOfDay)
-        let trackWidth = max(0, canvasWidth - labelWidth - trackInset * 2)
+        let trackWidth = max(
+            0,
+            canvasWidth - labelWidth - trackLeadingInset - trackTrailingInset
+        )
 
         return TimelineOpenSlotEntry(
             slot: slot,
@@ -520,7 +568,38 @@ private struct TodayTimelineView: View {
             onSelect: { onSelectOpenSlot(slot.id) }
         )
         .frame(width: trackWidth, alignment: .leading)
-        .offset(x: labelWidth + trackInset, y: y)
+        .offset(x: labelWidth + trackLeadingInset, y: y)
+    }
+
+    private var timelineAnimation: Animation? {
+        if reduceMotion {
+            return .easeOut(duration: 0.15)
+        }
+        return .spring(response: 0.4, dampingFraction: 1)
+    }
+
+    private var scrollAnchorMinutes: [Int] {
+        var minutes = Set(scale.hours.map { $0 * 60 })
+        minutes.insert(scale.startHour * 60)
+        minutes.insert(scale.endHour * 60)
+        minutes.insert(model.initialScrollMinute)
+        model.blocks.forEach {
+            minutes.insert($0.startMinuteOfDay)
+            minutes.insert($0.endMinuteOfDay)
+        }
+        model.openSlots.forEach {
+            minutes.insert($0.startMinuteOfDay)
+            minutes.insert($0.endMinuteOfDay)
+        }
+        if let currentMinute {
+            minutes.insert(currentMinute)
+        }
+        if let dateNavigationScrollMinute {
+            minutes.insert(dateNavigationScrollMinute)
+        }
+        return minutes
+            .filter { $0 >= scale.startHour * 60 && $0 <= scale.endHour * 60 }
+            .sorted()
     }
 
     private var canvasHeight: CGFloat {
@@ -562,8 +641,10 @@ private struct TodayTimelineView: View {
         return path
     }
 
-    private func anchorHour(for minute: Int) -> Int {
-        max(scale.startHour, min(scale.endHour, minute / 60))
+    private func anchorMinute(for minute: Int) -> Int {
+        scrollAnchorMinutes.min(by: {
+            abs($0 - minute) < abs($1 - minute)
+        }) ?? scale.startHour * 60
     }
 
     private func hourLabel(for hour: Int) -> String {
@@ -576,7 +657,10 @@ private struct TodayTimelineView: View {
 
     private func scroll(to minute: Int, anchor: UnitPoint, proxy: ScrollViewProxy, animated: Bool) {
         let action = {
-            proxy.scrollTo(anchorHour(for: minute), anchor: anchor)
+            proxy.scrollTo(
+                TodayTimelineScrollAnchor(minute: anchorMinute(for: minute)),
+                anchor: anchor
+            )
         }
 
         if animated {
@@ -595,21 +679,12 @@ private struct TodayTimelineView: View {
         proxy: ScrollViewProxy,
         animated: Bool
     ) {
-        let action = {
-            if blocksByID[blockID] != nil {
-                proxy.scrollTo(blockID, anchor: anchor)
-            } else {
-                proxy.scrollTo(anchorHour(for: fallbackMinute), anchor: anchor)
-            }
-        }
-
-        if animated {
-            withAnimation(.easeInOut(duration: 0.3)) {
-                action()
-            }
-        } else {
-            action()
-        }
+        let targetMinute = TodayTimelineScrollTargetResolver.targetMinute(
+            for: blockID,
+            in: model.blocks,
+            fallbackMinute: fallbackMinute
+        )
+        scroll(to: targetMinute, anchor: anchor, proxy: proxy, animated: animated)
     }
 
     private func timelineNodeSort(_ lhs: TimelineBlockItem, _ rhs: TimelineBlockItem) -> Bool {
@@ -675,10 +750,9 @@ private struct TimelineBlockCard: View {
     let timingResolver: (UUID) -> TimeBlockTiming?
     let onSelect: (UUID) -> Void
 
-    private let minimumHeight: CGFloat = 52
-    private let childInset: CGFloat = 16
-    private let childGap: CGFloat = 8
-    private let maximumVerticalGap: CGFloat = 3
+    private let minimumHeight: CGFloat = 44
+    private let childLeadingInset: CGFloat = 16
+    private let childTrailingInset: CGFloat = 8
 
     private var block: TimelineBlockItem { node.block }
 
@@ -714,21 +788,8 @@ private struct TimelineBlockCard: View {
         max(durationHeight, minimumHeight)
     }
 
-    private var visualVerticalInset: CGFloat {
-        let availableGap = max(0, durationHeight - minimumHeight)
-        return min(maximumVerticalGap / 2, availableGap / 2)
-    }
-
     private var cardHeight: CGFloat {
-        outerFrameHeight - visualVerticalInset * 2
-    }
-
-    private var headerReservedHeight: CGFloat {
-        54
-    }
-
-    private var headerBackdropHeight: CGFloat {
-        min(cardHeight, headerReservedHeight + 22)
+        outerFrameHeight
     }
 
     private var cardShape: RoundedRectangle {
@@ -738,45 +799,50 @@ private struct TimelineBlockCard: View {
         )
     }
 
+    @ViewBuilder
     private var headerContent: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .top, spacing: 8) {
+        if cardHeight >= 60 {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(block.title)
                     .font(.headline)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .lineLimit(1)
 
-                Spacer(minLength: 8)
+                Text(timeRangeText)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
             }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .allowsHitTesting(false)
+        } else {
+            HStack(spacing: 8) {
+                Text(block.title)
+                    .font(.headline)
+                    .lineLimit(1)
 
-            Text("\(displayedStartMinuteOfDay.formattedTime) - \(displayedEndMinuteOfDay.formattedTime)")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                Spacer(minLength: 4)
 
+                Text(timeRangeText)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 10)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            .allowsHitTesting(false)
         }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(alignment: .topLeading) {
-            LinearGradient(
-                colors: [
-                    backgroundColor,
-                    backgroundColor,
-                    backgroundColor.opacity(0.96),
-                    backgroundColor.opacity(0)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .frame(height: headerBackdropHeight)
-            .clipShape(cardShape)
-        }
-        .allowsHitTesting(false)
+    }
+
+    private var timeRangeText: String {
+        "\(displayedStartMinuteOfDay.formattedTime)–\(displayedEndMinuteOfDay.formattedTime)"
     }
 
     var body: some View {
         GeometryReader { geometry in
-            let childHorizontalInset = min(childInset, max(8, geometry.size.width * 0.12))
-            let childWidth = max(geometry.size.width - childHorizontalInset * 2, 1)
+            let leadingInset = min(childLeadingInset, max(8, geometry.size.width * 0.12))
+            let trailingInset = min(childTrailingInset, max(4, geometry.size.width * 0.06))
+            let childWidth = max(geometry.size.width - leadingInset - trailingInset, 1)
 
             ZStack(alignment: .topLeading) {
                 ZStack(alignment: .topLeading) {
@@ -789,7 +855,7 @@ private struct TimelineBlockCard: View {
                         childCard(
                             for: child,
                             width: childWidth,
-                            horizontalInset: childHorizontalInset
+                            horizontalInset: leadingInset
                         )
                     }
 
@@ -799,7 +865,6 @@ private struct TimelineBlockCard: View {
                 }
                 .clipShape(cardShape)
                 .frame(width: geometry.size.width, height: cardHeight, alignment: .topLeading)
-                .offset(y: visualVerticalInset)
                 .overlay(
                     cardShape
                         .strokeBorder(borderColor, lineWidth: borderWidth)
@@ -813,9 +878,6 @@ private struct TimelineBlockCard: View {
         }
         .frame(height: outerFrameHeight)
         .id(block.id)
-        .onTapGesture {
-            onSelect(block.id)
-        }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityHint("Shows block details")
@@ -842,7 +904,7 @@ private struct TimelineBlockCard: View {
             return style.surface.opacity(0.94)
         }
 
-        return node.children.isEmpty ? style.surface : style.surface.opacity(0.9)
+        return style.surface
     }
 
     private var borderColor: Color {
@@ -854,7 +916,7 @@ private struct TimelineBlockCard: View {
             return style.accent.opacity(0.42)
         }
 
-        return style.border
+        return Color(uiColor: .separator)
     }
 
     private var borderWidth: CGFloat {
@@ -869,16 +931,12 @@ private struct TimelineBlockCard: View {
         return 1
     }
 
-    private func childYOffset(for child: TodayTimelineNode, childHeight: CGFloat) -> CGFloat {
+    private func childYOffset(for child: TodayTimelineNode) -> CGFloat {
         let childRange = childDisplayedRange(of: child)
-        let relative = scale.distance(
+        return scale.distance(
             from: displayedStartMinuteOfDay,
             to: childRange.startMinuteOfDay
         )
-        let desiredTop = headerReservedHeight + childGap
-        let availableShift = max(0, cardHeight - childHeight - childGap - relative)
-        let shift = min(max(0, desiredTop - relative), availableShift)
-        return relative + shift
     }
 
     private func childCard(
@@ -887,13 +945,6 @@ private struct TimelineBlockCard: View {
         horizontalInset: CGFloat
     ) -> some View {
         let childRange = childDisplayedRange(of: child)
-        let childHeight = max(
-            scale.distance(
-                from: childRange.startMinuteOfDay,
-                to: childRange.endMinuteOfDay
-            ),
-            minimumHeight
-        )
 
         return TimelineBlockCard(
             node: child,
@@ -909,7 +960,7 @@ private struct TimelineBlockCard: View {
         .frame(width: width)
         .offset(
             x: horizontalInset,
-            y: childYOffset(for: child, childHeight: childHeight)
+            y: childYOffset(for: child)
         )
     }
 
@@ -956,10 +1007,6 @@ private struct TimelineOpenSlotEntry: View {
         scale.distance(from: slot.startMinuteOfDay, to: slot.endMinuteOfDay)
     }
 
-    private var showsTimeRange: Bool {
-        slotHeight >= 54
-    }
-
     private var style: LayerVisualStyle {
         LayerVisualStyle.forBlock(
             layerIndex: 0,
@@ -969,23 +1016,23 @@ private struct TimelineOpenSlotEntry: View {
     }
 
     private var timeRangeText: String {
-        "\(slot.startMinuteOfDay.formattedTime) - \(slot.endMinuteOfDay.formattedTime)"
+        "\(slot.startMinuteOfDay.formattedTime)–\(slot.endMinuteOfDay.formattedTime)"
     }
 
     private var accessibilityText: String {
         "Open Time, \(slot.startMinuteOfDay.formattedTime) to \(slot.endMinuteOfDay.formattedTime)"
     }
 
-    private var overlayAlignment: Alignment {
-        showsTimeRange ? .leading : .center
-    }
-
     var body: some View {
         slotShape
-            .fill(isSelected ? style.surface.opacity(0.55) : style.surface.opacity(0.18))
+            .fill(
+                isSelected
+                    ? style.strongSurface
+                    : Color(uiColor: .systemGroupedBackground)
+            )
             .overlay(slotBorder)
-            .frame(height: max(slotHeight, 10))
-            .overlay(alignment: overlayAlignment) { slotLabel }
+            .frame(height: max(slotHeight, 44))
+            .overlay(alignment: .topLeading) { slotLabel }
             .contentShape(slotShape)
             .onTapGesture(perform: onSelect)
             .accessibilityElement(children: .combine)
@@ -998,34 +1045,27 @@ private struct TimelineOpenSlotEntry: View {
     }
 
     private var slotShape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: 18, style: .continuous)
+        RoundedRectangle(cornerRadius: 22, style: .continuous)
     }
 
     private var slotBorder: some View {
         slotShape.strokeBorder(
-            isSelected ? style.accent.opacity(0.88) : style.border.opacity(0.55),
-            style: StrokeStyle(lineWidth: isSelected ? 1.6 : 1, dash: [6, 6])
+            isSelected ? style.accent : Color(uiColor: .separator),
+            lineWidth: isSelected ? 2 : 1
         )
     }
 
     private var slotLabel: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "clock")
-                .foregroundStyle(isSelected ? style.accent : .secondary)
+        VStack(alignment: .leading, spacing: 2) {
+            Text("Open Time")
+                .font(.headline)
+                .foregroundStyle(.primary)
 
-            if showsTimeRange {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Open Time")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.secondary)
-
-                    Text(timeRangeText)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.primary)
-                }
-            }
+            Text(timeRangeText)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
         }
-        .padding(.horizontal, 10)
+        .padding(12)
     }
 }
 
@@ -1392,6 +1432,7 @@ private struct TodayUnavailableInspectorView: View {
         selectedBlockID: model.selectedBlock?.id,
         selectedOpenSlotID: nil,
         currentMinute: 9 * 60 + 30,
+        dateNavigationScrollMinute: nil,
         jumpToCurrentTrigger: 0,
         scrollToBlockID: nil,
         scrollToBlockTrigger: 0,
@@ -1409,6 +1450,7 @@ private struct TodayUnavailableInspectorView: View {
         selectedBlockID: nil,
         selectedOpenSlotID: nil,
         currentMinute: nil,
+        dateNavigationScrollMinute: nil,
         jumpToCurrentTrigger: 0,
         scrollToBlockID: nil,
         scrollToBlockTrigger: 0,
@@ -1433,6 +1475,7 @@ private struct TodayUnavailableInspectorView: View {
         selectedBlockID: model.selectedBlock?.id,
         selectedOpenSlotID: nil,
         currentMinute: nil,
+        dateNavigationScrollMinute: nil,
         jumpToCurrentTrigger: 0,
         scrollToBlockID: nil,
         scrollToBlockTrigger: 0,

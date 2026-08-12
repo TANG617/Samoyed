@@ -86,6 +86,83 @@ enum SamoyedUITestSupport {
             )
             try? repository.save(SamoyedDocument(dayPlans: [plan]))
 
+        case "single-layer-days":
+            let today = LocalDay.today()
+            let tomorrow = today.adding(days: 1)
+
+            func plan(for day: LocalDay) -> DayPlan {
+                DayPlan(
+                    date: day,
+                    blocks: [
+                        TimeBlock(
+                            layerIndex: 0,
+                            title: "Morning",
+                            tasks: [TaskItem(title: "Plan the day")],
+                            timing: .absolute(startMinuteOfDay: 420, requestedEndMinuteOfDay: 720)
+                        ),
+                        TimeBlock(
+                            layerIndex: 0,
+                            title: "Lunch",
+                            timing: .absolute(startMinuteOfDay: 720, requestedEndMinuteOfDay: 780)
+                        ),
+                        TimeBlock(
+                            layerIndex: 0,
+                            title: "Afternoon",
+                            tasks: [
+                                TaskItem(title: "Review progress"),
+                                TaskItem(title: "Wrap up", order: 1)
+                            ],
+                            timing: .absolute(startMinuteOfDay: 780, requestedEndMinuteOfDay: 1080)
+                        ),
+                        TimeBlock(
+                            layerIndex: 0,
+                            title: "Evening",
+                            timing: .absolute(startMinuteOfDay: 1080, requestedEndMinuteOfDay: 1320)
+                        )
+                    ]
+                )
+            }
+
+            try? repository.save(
+                SamoyedDocument(dayPlans: [plan(for: today), plan(for: tomorrow)])
+            )
+
+        case "elastic-timeline":
+            let afternoonID = UUID()
+            let plan = DayPlan(
+                date: .today(),
+                blocks: [
+                    TimeBlock(
+                        layerIndex: 0,
+                        title: "Before",
+                        timing: .absolute(startMinuteOfDay: 0, requestedEndMinuteOfDay: 600)
+                    ),
+                    TimeBlock(
+                        layerIndex: 0,
+                        title: "Lunch",
+                        timing: .absolute(startMinuteOfDay: 720, requestedEndMinuteOfDay: 780)
+                    ),
+                    TimeBlock(
+                        id: afternoonID,
+                        layerIndex: 0,
+                        title: "Afternoon",
+                        timing: .absolute(startMinuteOfDay: 780, requestedEndMinuteOfDay: 1080)
+                    ),
+                    TimeBlock(
+                        parentBlockID: afternoonID,
+                        layerIndex: 1,
+                        title: "Project Work",
+                        timing: .relative(startOffsetMinutes: 15, requestedDurationMinutes: 150)
+                    ),
+                    TimeBlock(
+                        layerIndex: 0,
+                        title: "After",
+                        timing: .absolute(startMinuteOfDay: 1080, requestedEndMinuteOfDay: 1440)
+                    )
+                ]
+            )
+            try? repository.save(SamoyedDocument(dayPlans: [plan]))
+
         case "load-error":
             try? FileManager.default.createDirectory(
                 at: fileURL.deletingLastPathComponent(),
