@@ -99,6 +99,8 @@ jobs:
           APPSTORE_API_PRIVATE_KEY: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
           APPSTORE_CERTIFICATES_FILE_BASE64: ${{ secrets.APPSTORE_CERTIFICATES_FILE_BASE64 }}
           APPSTORE_CERTIFICATES_PASSWORD: ${{ secrets.APPSTORE_CERTIFICATES_PASSWORD }}
+          APP_PROVISIONING_PROFILE_NAME: ${{ vars.SAMOYED_APP_PROVISIONING_PROFILE_NAME }}
+          WIDGET_PROVISIONING_PROFILE_NAME: ${{ vars.SAMOYED_WIDGET_PROVISIONING_PROFILE_NAME }}
         run: |
           set -euo pipefail
 
@@ -108,7 +110,9 @@ jobs:
             APPSTORE_ISSUER_ID \
             APPSTORE_API_PRIVATE_KEY \
             APPSTORE_CERTIFICATES_FILE_BASE64 \
-            APPSTORE_CERTIFICATES_PASSWORD
+            APPSTORE_CERTIFICATES_PASSWORD \
+            APP_PROVISIONING_PROFILE_NAME \
+            WIDGET_PROVISIONING_PROFILE_NAME
           do
             if [[ -z "${!variable_name}" ]]; then
               missing+=("$variable_name")
@@ -194,17 +198,21 @@ jobs:
         env:
           APP_PROFILES_JSON: ${{ steps.app_profiles.outputs.profiles }}
           WIDGET_PROFILES_JSON: ${{ steps.widget_profiles.outputs.profiles }}
+          EXPECTED_APP_PROFILE_NAME: ${{ vars.SAMOYED_APP_PROVISIONING_PROFILE_NAME }}
+          EXPECTED_WIDGET_PROFILE_NAME: ${{ vars.SAMOYED_WIDGET_PROVISIONING_PROFILE_NAME }}
         run: |
           set -euo pipefail
 
           app_profile_name="$(
             jq -er \
-              'map(select(.type == "IOS_APP_STORE")) | if length == 1 then .[0].name else error("Expected exactly one app profile") end' \
+              --arg expected "$EXPECTED_APP_PROFILE_NAME" \
+              'map(select(.type == "IOS_APP_STORE" and .name == $expected)) | if length == 1 then .[0].name else error("Expected exactly one app profile with the configured name") end' \
               <<< "$APP_PROFILES_JSON"
           )"
           widget_profile_name="$(
             jq -er \
-              'map(select(.type == "IOS_APP_STORE")) | if length == 1 then .[0].name else error("Expected exactly one widget profile") end' \
+              --arg expected "$EXPECTED_WIDGET_PROFILE_NAME" \
+              'map(select(.type == "IOS_APP_STORE" and .name == $expected)) | if length == 1 then .[0].name else error("Expected exactly one widget profile with the configured name") end' \
               <<< "$WIDGET_PROFILES_JSON"
           )"
 
@@ -271,18 +279,28 @@ jobs:
 
           echo "ipa_path=$ipa_path" >> "$GITHUB_OUTPUT"
 
-      - name: Verify archive signature, metadata, and entitlements
+      - name: Verify exported IPA signature, metadata, profiles, and entitlements
         shell: bash
         env:
+          IPA_PATH: ${{ steps.export.outputs.ipa_path }}
+          EXPECTED_APP_PROFILE_NAME: ${{ steps.profiles.outputs.app_profile_name }}
+          EXPECTED_WIDGET_PROFILE_NAME: ${{ steps.profiles.outputs.widget_profile_name }}
           EXPECTED_MARKETING_VERSION: ${{ steps.release.outputs.marketing_version }}
           EXPECTED_BUILD_NUMBER: ${{ steps.release.outputs.build_number }}
         run: |
           set -euo pipefail
 
-          app_path="$RUNNER_TEMP/Samoyed.xcarchive/Products/Applications/Samoyed.app"
+          ipa_root="$RUNNER_TEMP/VerifiedIPA"
+          mkdir "$ipa_root"
+          ditto -x -k "$IPA_PATH" "$ipa_root"
+
+          app_path="$ipa_root/Payload/Samoyed.app"
           widget_path="$app_path/PlugIns/SamoyedWidgetExtension.appex"
           app_info="$app_path/Info.plist"
           widget_info="$widget_path/Info.plist"
+
+          test -d "$app_path"
+          test -d "$widget_path"
 
           codesign --verify --deep --strict --verbose=2 "$app_path"
           codesign --verify --strict --verbose=2 "$widget_path"
@@ -297,11 +315,49 @@ jobs:
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$widget_info")" = "$EXPECTED_MARKETING_VERSION"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$app_info")" = "$EXPECTED_BUILD_NUMBER"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$widget_info")" = "$EXPECTED_BUILD_NUMBER"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconName' "$app_info")" = "Samoyed"
+          test -f "$app_path/Samoyed60x60@2x.png"
+          plutil -convert json -o - "$app_info" \
+            | jq -e '[.CFBundleURLTypes[]?.CFBundleURLSchemes[]?] == ["samoyed"]'
 
           codesign -d --entitlements :- "$app_path" > "$RUNNER_TEMP/app-entitlements.plist" 2>/dev/null
           codesign -d --entitlements :- "$widget_path" > "$RUNNER_TEMP/widget-entitlements.plist" 2>/dev/null
-          plutil -p "$RUNNER_TEMP/app-entitlements.plist" | grep -F "$APP_GROUP_ID"
-          plutil -p "$RUNNER_TEMP/widget-entitlements.plist" | grep -F "$APP_GROUP_ID"
+          plutil -convert json -o "$RUNNER_TEMP/app-entitlements.json" "$RUNNER_TEMP/app-entitlements.plist"
+          plutil -convert json -o "$RUNNER_TEMP/widget-entitlements.json" "$RUNNER_TEMP/widget-entitlements.plist"
+          jq -e \
+            --arg application_identifier "$APPLE_TEAM_ID.$APP_BUNDLE_ID" \
+            --arg team_identifier "$APPLE_TEAM_ID" \
+            --arg group "$APP_GROUP_ID" \
+            '."application-identifier" == $application_identifier and ."com.apple.developer.team-identifier" == $team_identifier and ."com.apple.security.application-groups" == [$group]' \
+            "$RUNNER_TEMP/app-entitlements.json"
+          jq -e \
+            --arg application_identifier "$APPLE_TEAM_ID.$WIDGET_BUNDLE_ID" \
+            --arg team_identifier "$APPLE_TEAM_ID" \
+            --arg group "$APP_GROUP_ID" \
+            '."application-identifier" == $application_identifier and ."com.apple.developer.team-identifier" == $team_identifier and ."com.apple.security.application-groups" == [$group]' \
+            "$RUNNER_TEMP/widget-entitlements.json"
+
+          app_profile="$RUNNER_TEMP/app-profile.plist"
+          widget_profile="$RUNNER_TEMP/widget-profile.plist"
+          security cms -D -i "$app_path/embedded.mobileprovision" > "$app_profile"
+          security cms -D -i "$widget_path/embedded.mobileprovision" > "$widget_profile"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :Name' "$app_profile")" = "$EXPECTED_APP_PROFILE_NAME"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :Name' "$widget_profile")" = "$EXPECTED_WIDGET_PROFILE_NAME"
+          plutil -convert json -o "$RUNNER_TEMP/app-profile.json" "$app_profile"
+          plutil -convert json -o "$RUNNER_TEMP/widget-profile.json" "$widget_profile"
+          jq -e \
+            --arg application_identifier "$APPLE_TEAM_ID.$APP_BUNDLE_ID" \
+            --arg team_identifier "$APPLE_TEAM_ID" \
+            --arg group "$APP_GROUP_ID" \
+            '.Entitlements["application-identifier"] == $application_identifier and .Entitlements["com.apple.developer.team-identifier"] == $team_identifier and .Entitlements["com.apple.security.application-groups"] == [$group]' \
+            "$RUNNER_TEMP/app-profile.json"
+          jq -e \
+            --arg application_identifier "$APPLE_TEAM_ID.$WIDGET_BUNDLE_ID" \
+            --arg team_identifier "$APPLE_TEAM_ID" \
+            --arg group "$APP_GROUP_ID" \
+            '.Entitlements["application-identifier"] == $application_identifier and .Entitlements["com.apple.developer.team-identifier"] == $team_identifier and .Entitlements["com.apple.security.application-groups"] == [$group]' \
+            "$RUNNER_TEMP/widget-profile.json"
+
           test -f "$app_path/PrivacyInfo.xcprivacy"
           test -f "$widget_path/PrivacyInfo.xcprivacy"
           plutil -lint "$app_path/PrivacyInfo.xcprivacy"

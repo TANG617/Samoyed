@@ -46,3 +46,10 @@
 - Verify the empty-document path when changing startup, templates, or materialization.
 - Run `swift test` after core changes.
 - Run an Xcode build after app or widget entry changes.
+
+## TestFlight Release Gate
+
+- Keep the existing Apple deployment identity in `Config/AppleIdentity.xcconfig`; do not duplicate those values in workflows or source files.
+- Configure the `testflight` GitHub Environment variables `SAMOYED_APP_PROVISIONING_PROFILE_NAME` and `SAMOYED_WIDGET_PROVISIONING_PROFILE_NAME` with the exact active App Store profile names. Multiple active profiles may coexist; the workflow selects only the configured names.
+- Keep App Store Connect credentials and the Apple Distribution certificate in the `testflight` Environment secrets referenced by `.github/workflows/testflight.yml`.
+- The release workflow must verify the exported IPA—not only the archive—including signatures, Bundle IDs, versions, App Group entitlements, embedded profile names and entitlements, privacy manifests, URL scheme, and generated App Icon files before upload.
