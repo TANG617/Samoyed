@@ -7,10 +7,10 @@ struct LibraryImportExportView: View {
     @State private var preparedExportFile: SharedExportFile?
     @State private var sharedExportCleanupURL: URL?
     @State private var isShowingImporter = false
-    @State private var pendingImport: PendingRoutineImport?
+    @State private var pendingImport: LibraryPendingRoutineImport?
     @State private var importRoutineTitle = ""
     @State private var selectedExportRoutineID: UUID?
-    @State private var pendingConflict: PendingRoutineImportConflict?
+    @State private var pendingConflict: LibraryPendingRoutineImportConflict?
 
     var body: some View {
         List {
@@ -68,7 +68,7 @@ struct LibraryImportExportView: View {
         .navigationTitle("Routine Config Files")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $pendingImport) { pendingImport in
-            RoutineImportPreviewSheet(
+            LibraryRoutineImportPreviewSheet(
                 pendingImport: pendingImport,
                 routineTitle: $importRoutineTitle,
                 onCancel: {
@@ -145,7 +145,7 @@ struct LibraryImportExportView: View {
             let yaml = try loadText(from: url)
             let summary = try store.previewRoutineConfigImport(yaml)
             importRoutineTitle = routineTitle(from: url)
-            pendingImport = PendingRoutineImport(
+            pendingImport = LibraryPendingRoutineImport(
                 sourceFilename: url.lastPathComponent,
                 yaml: yaml,
                 summary: summary
@@ -161,7 +161,7 @@ struct LibraryImportExportView: View {
 
         if let existingRoutineID = store.routineID(titled: title) {
             self.pendingImport = nil
-            pendingConflict = PendingRoutineImportConflict(
+            pendingConflict = LibraryPendingRoutineImportConflict(
                 pendingImport: pendingImport,
                 title: title,
                 existingRoutineID: existingRoutineID
@@ -173,7 +173,7 @@ struct LibraryImportExportView: View {
     }
 
     private func completeImport(
-        _ pendingImport: PendingRoutineImport,
+        _ pendingImport: LibraryPendingRoutineImport,
         title: String,
         replacingRoutineID: UUID?
     ) {
@@ -281,24 +281,24 @@ struct LibraryImportExportView: View {
     }
 }
 
-private struct PendingRoutineImport: Identifiable {
+private struct LibraryPendingRoutineImport: Identifiable {
     let id = UUID()
     let sourceFilename: String
     let yaml: String
     let summary: PortableDayBlocksSummary
 }
 
-private struct PendingRoutineImportConflict: Identifiable {
+private struct LibraryPendingRoutineImportConflict: Identifiable {
     let id = UUID()
-    let pendingImport: PendingRoutineImport
+    let pendingImport: LibraryPendingRoutineImport
     let title: String
     let existingRoutineID: UUID
 }
 
-private struct RoutineImportPreviewSheet: View {
+private struct LibraryRoutineImportPreviewSheet: View {
     @Environment(\.dismiss) private var dismiss
 
-    let pendingImport: PendingRoutineImport
+    let pendingImport: LibraryPendingRoutineImport
     @Binding var routineTitle: String
     let onCancel: () -> Void
     let onImport: () -> Void
