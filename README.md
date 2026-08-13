@@ -1141,9 +1141,15 @@ UI 分层原则：
 3. root view 可以持有局部 presentation state，例如选中的分段、当前 sheet、编辑草稿，但不直接承担规则计算。
 4. 对未来日期的模板变更只影响重新物化或显式 regenerate 的 day plan；已经存在的日计划继续作为快照保留。
 
-### 11.11 远程 Routine Config 导入
+### 11.11 Routine Config Deeplink 导入
 
-外部编排器可以通过以下 deep link 打开确认式导入流程：
+外部编排器优先通过无服务器的内嵌 deep link 打开确认式导入流程：
+
+```text
+samoyed://import-routine?v=1&payload=<unpadded-base64url-utf8-yaml>&title=<percent-encoded-title>
+```
+
+已有 HTTPS 托管时仍可使用远程兼容形式：
 
 ```text
 samoyed://import-routine?url=<percent-encoded-https-url>&title=<percent-encoded-title>
@@ -1151,13 +1157,13 @@ samoyed://import-routine?url=<percent-encoded-https-url>&title=<percent-encoded-
 
 规则：
 
-1. `url` 必填，`title` 可选。
-2. 正式构建只接受 HTTPS；Debug 构建额外接受 localhost / `127.0.0.1` / `::1` HTTP，供模拟器本地验证。
-3. 只接受成功的 HTTP 响应、UTF-8 文本且不超过 512 KB。
-4. 跳转后的最终 URL 仍需通过同一传输校验，避免重定向绕过 HTTPS 约束。
-5. YAML 必须先通过 `SamoyedPortableDayBlocks` 的结构与时间校验，再展示来源、block 和 checklist 摘要。
+1. `payload` 与 `url` 必须且只能出现一个，`title` 可选。
+2. `v=1` 使用 UTF-8 YAML 的无填充 Base64URL 编码，解码后不超过 32 KB。
+3. 远程模式下正式构建只接受 HTTPS；Debug 构建额外接受 localhost / `127.0.0.1` / `::1` HTTP。
+4. 远程模式只接受成功响应和不超过 512 KB 的 UTF-8 文本；重定向后的最终 URL 仍需通过传输校验。
+5. 两种传输都必须先通过 `SamoyedPortableDayBlocks` 的结构与时间校验，再展示来源、block 和 checklist 摘要。
 6. deep link 不直接写入数据；用户必须在 App 内确认 Import、Replace 或 Keep Both。
-7. 导入只加入本地 Routine Library，不修改当天 Materialized Day 或 Execution State，也不与远程 URL 建立持续同步。
+7. 导入只加入本地 Routine Library，不修改当天 Materialized Day 或 Execution State，也不建立持续同步。
 
 ## 12. 当前阶段不实现的 UI 与平台集成
 

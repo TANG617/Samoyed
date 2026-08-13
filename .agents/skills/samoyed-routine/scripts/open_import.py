@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""在 iOS 模拟器中打开 Samoyed 的远程 Routine 导入预览。"""
+"""生成或打开 Samoyed Routine 导入预览。"""
 
 from __future__ import annotations
 
 import argparse
+import base64
 import http.server
 import secrets
 import shutil
@@ -14,10 +15,19 @@ from urllib.parse import urlencode, urlparse
 
 
 MAXIMUM_BYTES = 512 * 1024
+MAXIMUM_INLINE_BYTES = 32 * 1024
 
 
-def make_deeplink(remote_url: str, title: str) -> str:
+def make_remote_deeplink(remote_url: str, title: str) -> str:
     query = urlencode({"url": remote_url, "title": title})
+    return f"samoyed://import-routine?{query}"
+
+
+def make_inline_deeplink(yaml_data: bytes, title: str) -> str:
+    if len(yaml_data) > MAXIMUM_INLINE_BYTES:
+        raise ValueError("内嵌 YAML 超过 Samoyed 的 32 KB deeplink 限制")
+    payload = base64.urlsafe_b64encode(yaml_data).rstrip(b"=").decode("ascii")
+    query = urlencode({"v": "1", "payload": payload, "title": title})
     return f"samoyed://import-routine?{query}"
 
 
@@ -70,7 +80,7 @@ def serve_once_and_open(yaml_data: bytes, title: str, device: str, timeout: floa
     server.timeout = timeout
     server.served = False  # type: ignore[attr-defined]
     remote_url = f"http://127.0.0.1:{server.server_port}{expected_path}"
-    deeplink = make_deeplink(remote_url, title)
+    deeplink = make_remote_deeplink(remote_url, title)
     try:
         open_simulator_url(device, deeplink)
         server.handle_request()
@@ -85,10 +95,12 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("yaml", type=Path, help="已生成的 Samoyed YAML")
     parser.add_argument("--title", help="建议的 Routine 名称")
-    parser.add_argument("--url", help="已托管的 HTTPS YAML URL")
+    transport = parser.add_mutually_exclusive_group()
+    transport.add_argument("--url", help="已托管的 HTTPS YAML URL")
+    transport.add_argument("--inline", action="store_true", help="把 YAML 作为 Base64URL 内嵌到 deeplink")
     parser.add_argument("--device", default="booted", help="模拟器 UDID 或 'booted'")
     parser.add_argument("--timeout", type=float, default=30, help="localhost 请求超时时间")
-    parser.add_argument("--print-only", action="store_true", help="只打印已托管 URL 的 deeplink，不打开模拟器")
+    parser.add_argument("--print-only", action="store_true", help="只打印 deeplink，不打开模拟器")
     args = parser.parse_args()
 
     try:
@@ -100,14 +112,18 @@ def main() -> int:
         if not title:
             raise ValueError("Routine 名称不能为空")
 
-        if args.url:
+        if args.inline:
+            deeplink = make_inline_deeplink(yaml_data, title)
+            if not args.print_only:
+                open_simulator_url(args.device, deeplink)
+        elif args.url:
             validate_remote_url(args.url)
-            deeplink = make_deeplink(args.url, title)
+            deeplink = make_remote_deeplink(args.url, title)
             if not args.print_only:
                 open_simulator_url(args.device, deeplink)
         else:
             if args.print_only:
-                raise ValueError("--print-only 必须与 --url 一起使用，因为 localhost 服务器需要持续运行")
+                raise ValueError("--print-only 必须与 --inline 或 --url 一起使用，因为 localhost 服务器需要持续运行")
             deeplink = serve_once_and_open(yaml_data, title, args.device, args.timeout)
     except (OSError, UnicodeDecodeError, ValueError, RuntimeError, TimeoutError) as error:
         print(f"错误：{error}", file=sys.stderr)

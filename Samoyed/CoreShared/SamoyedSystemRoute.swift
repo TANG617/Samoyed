@@ -73,6 +73,12 @@ enum SamoyedSystemRoute: Equatable, Sendable {
         title: String? = nil,
         source: SamoyedSystemSource? = nil
     )
+    case importRoutinePayload(
+        version: Int,
+        payload: String,
+        title: String? = nil,
+        source: SamoyedSystemSource? = nil
+    )
     case startCurrentBlockLiveActivity(source: SamoyedSystemSource? = nil)
     case endCurrentBlockLiveActivity(source: SamoyedSystemSource? = nil)
 
@@ -108,18 +114,46 @@ enum SamoyedSystemRoute: Equatable, Sendable {
             self = .library(source: source)
 
         case "import-routine":
-            guard
-                let remoteURLText = components.queryItems?.value(for: "url"),
-                let remoteURL = URL(string: remoteURLText),
-                remoteURL.scheme != nil
-            else {
+            let queryItems = components.queryItems ?? []
+            let hasRemoteURL = queryItems.contains(where: { $0.name == "url" })
+            let hasPayload = queryItems.contains(where: { $0.name == "payload" })
+
+            // A link must use exactly one transport. Rejecting ambiguous links keeps
+            // future protocol additions from silently choosing the wrong source.
+            guard hasRemoteURL != hasPayload else {
                 return nil
             }
-            self = .importRoutine(
-                remoteURL: remoteURL,
-                title: components.queryItems?.value(for: "title")?.samoyedNilIfBlank,
-                source: source
-            )
+
+            if hasPayload {
+                guard
+                    let payload = queryItems.value(for: "payload"),
+                    !payload.isEmpty,
+                    let versionText = queryItems.value(for: "v"),
+                    let version = Int(versionText),
+                    version > 0
+                else {
+                    return nil
+                }
+                self = .importRoutinePayload(
+                    version: version,
+                    payload: payload,
+                    title: queryItems.value(for: "title")?.samoyedNilIfBlank,
+                    source: source
+                )
+            } else {
+                guard
+                    let remoteURLText = queryItems.value(for: "url"),
+                    let remoteURL = URL(string: remoteURLText),
+                    remoteURL.scheme != nil
+                else {
+                    return nil
+                }
+                self = .importRoutine(
+                    remoteURL: remoteURL,
+                    title: queryItems.value(for: "title")?.samoyedNilIfBlank,
+                    source: source
+                )
+            }
 
         case "start-live-activity":
             self = .startCurrentBlockLiveActivity(source: source)
@@ -164,6 +198,15 @@ enum SamoyedSystemRoute: Equatable, Sendable {
                 source: source
             )
 
+        case let .importRoutinePayload(version, payload, title, source):
+            components.host = "import-routine"
+            components.queryItems = queryItems(
+                payloadVersion: version,
+                payload: payload,
+                routineTitle: title,
+                source: source
+            )
+
         case let .startCurrentBlockLiveActivity(source):
             components.host = "start-live-activity"
             components.queryItems = queryItems(source: source)
@@ -181,6 +224,8 @@ enum SamoyedSystemRoute: Equatable, Sendable {
         blockID: UUID? = nil,
         taskID: UUID? = nil,
         remoteURL: URL? = nil,
+        payloadVersion: Int? = nil,
+        payload: String? = nil,
         routineTitle: String? = nil,
         source: SamoyedSystemSource? = nil
     ) -> [URLQueryItem]? {
@@ -198,6 +243,12 @@ enum SamoyedSystemRoute: Equatable, Sendable {
         }
         if let remoteURL {
             items.append(URLQueryItem(name: "url", value: remoteURL.absoluteString))
+        }
+        if let payloadVersion {
+            items.append(URLQueryItem(name: "v", value: String(payloadVersion)))
+        }
+        if let payload {
+            items.append(URLQueryItem(name: "payload", value: payload))
         }
         if let routineTitle = routineTitle?.samoyedNilIfBlank {
             items.append(URLQueryItem(name: "title", value: routineTitle))

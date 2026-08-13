@@ -1,6 +1,6 @@
 ---
 name: samoyed-routine
-description: 通过访谈收集可重复的每日 Routine，区分日程步骤与一次性待办，将时间块、嵌套状态、Checklist、注意事项 Note 和提醒汇总为 Samoyed 可读取的 YAML Routine Config，完成校验后通过 HTTPS 或 Debug 模拟器 localhost deeplink 打开确认式导入。用于用户要求创建、修改、生成、校验或导入 Samoyed 日程与 day-blocks YAML 的场景。
+description: 通过访谈收集可重复的每日 Routine，区分日程步骤与一次性待办，将时间块、嵌套状态、Checklist、注意事项 Note 和提醒汇总为 Samoyed 可读取的 YAML Routine Config，完成校验后通过 Base64URL 内嵌 deeplink、HTTPS 或 Debug 模拟器 localhost 打开确认式导入。用于用户要求创建、修改、生成、校验或导入 Samoyed 日程与 day-blocks YAML 的场景。
 ---
 
 # Samoyed 日程编排
@@ -21,8 +21,9 @@ description: 通过访谈收集可重复的每日 Routine，区分日程步骤�
 6. 用紧凑摘要展示拟定的时间块、Checklist、Note 和提醒。生成文件前只解决实质歧义。
 7. 阅读 [references/config-format.md](references/config-format.md)，创建 `.routine.json` 构建规格，并运行 `scripts/build_routine.py` 生成 `.yml`。脚本能渲染时，不要手写最终 YAML。
 8. 仅在脚本成功后导入：
+   - 真机或无需托管：运行 `scripts/open_import.py <yaml> --title <名称> --inline --print-only`，把输出的 deeplink 交给用户。
    - Debug iOS 模拟器：运行 `scripts/open_import.py <yaml> --title <名称>`。
-   - 真机或非 Debug 构建：先把 YAML 放到用户批准的 HTTPS URL，再运行 `scripts/open_import.py <yaml> --title <名称> --url <https-url>`，或把编码后的 deeplink 交给用户。
+   - 已有 HTTPS 托管：运行 `scripts/open_import.py <yaml> --title <名称> --url <https-url>`。
    - 选择传输方式前阅读 [references/deeplink.md](references/deeplink.md)。
 9. 停在 Samoyed 的预览确认页。让用户在 App 内选择 Import、Replace、Keep Both 或 Cancel；不要绕过本地确认。
 10. 报告 YAML 路径、Routine 摘要、校验结果，以及是否已打开导入预览。
@@ -44,14 +45,14 @@ description: 通过访谈收集可重复的每日 Routine，区分日程步骤�
 
 ```bash
 python3 <skill-dir>/scripts/build_routine.py <routine>.routine.json --output <routine>.yml
-python3 <skill-dir>/scripts/open_import.py <routine>.yml --title "Routine 名称"
+python3 <skill-dir>/scripts/open_import.py <routine>.yml --title "Routine 名称" --inline --print-only
 ```
 
-已有托管配置时使用 `--url https://…`。只需要 deeplink、不打开模拟器时，把 `--print-only` 与 `--url` 一起使用。
+已有托管配置时使用 `--url https://…`。内嵌传输限制为 32 KB；超限时返回 YAML 文件，或在用户批准后使用 HTTPS 托管。
 
 ## 失败处理
 
 - 生成失败时，修正 JSON 规格并重新运行；不要降低校验标准。
-- 没有已启动的模拟器时，返回 YAML 和准确的 HTTPS deeplink 格式，不要声称已打开预览。
+- 没有已启动的模拟器时，返回 YAML 和准确的内嵌 deeplink，不要声称已打开预览。
 - App 拒绝 YAML 时，保留原始错误，修正规格、重新生成并重试。
-- 真机导入缺少 HTTPS 托管时，返回已校验 YAML 供用户通过 Files 导入；未经明确授权，不要上传到第三方服务。
+- 内嵌 YAML 超过 32 KB 时，返回已校验 YAML 供用户通过 Files 导入；未经明确授权，不要上传到第三方服务。

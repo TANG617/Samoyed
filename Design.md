@@ -245,7 +245,7 @@ Routines 页面不展示：
 Routine Config Files 页面应展示：
 
 - Import Routine Config File。
-- 通过 `samoyed://import-routine` 接收 HTTPS YAML，并在 App 内下载、校验和预览。
+- 通过 `samoyed://import-routine` 接收 Base64URL 内嵌 YAML 或 HTTPS YAML，并在 App 内解码/下载、校验和预览。
 - 导入预览和校验结果。
 - 导入后加入 Routine Library。
 - Export Selected Routine。
@@ -255,7 +255,7 @@ Routine Config Files 页面应展示：
 - 不替换今天的 Materialized Day。
 - 不修改当天 Execution State。
 - 不把 checklist completion 混入 Routine Definition。
-- 远程 URL 只作为传输来源；必须由用户确认后保存本地副本，不建立持续同步关系。
+- deeplink 只作为传输来源；必须由用户确认后保存本地副本，不建立持续同步关系。
 
 ## 9. System Surfaces
 

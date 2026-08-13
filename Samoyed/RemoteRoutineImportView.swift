@@ -19,9 +19,14 @@ struct RemoteRoutineImportRequest: Identifiable, Sendable {
     }
 }
 
-struct PendingRemoteRoutineImport: Identifiable {
+enum RoutineImportOrigin: Equatable {
+    case remote(URL)
+    case inlineLink
+}
+
+struct PendingRoutineImport: Identifiable {
     let id = UUID()
-    let sourceURL: URL
+    let origin: RoutineImportOrigin
     let yaml: String
     let summary: PortableDayBlocksSummary
     let suggestedTitle: String
@@ -51,18 +56,18 @@ struct RemoteRoutineImportLoadingOverlay: View {
     }
 }
 
-struct RemoteRoutineImportPreviewSheet: View {
+struct RoutineImportPreviewSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(SamoyedStore.self) private var store
 
-    let pendingImport: PendingRemoteRoutineImport
+    let pendingImport: PendingRoutineImport
 
     @State private var routineTitle: String
     @State private var conflict: RemoteRoutineImportConflict?
     @State private var importErrorMessage: String?
     @State private var isImporting = false
 
-    init(pendingImport: PendingRemoteRoutineImport) {
+    init(pendingImport: PendingRoutineImport) {
         self.pendingImport = pendingImport
         _routineTitle = State(initialValue: pendingImport.suggestedTitle)
     }
@@ -74,9 +79,15 @@ struct RemoteRoutineImportPreviewSheet: View {
                     TextField("Routine name", text: $routineTitle)
                 }
 
-                Section("Remote Source") {
-                    LabeledContent("Host", value: pendingImport.sourceURL.host ?? "Unknown")
-                    LabeledContent("File", value: sourceFilename)
+                Section("Source") {
+                    switch pendingImport.origin {
+                    case let .remote(sourceURL):
+                        LabeledContent("Host", value: sourceURL.host ?? "Unknown")
+                        LabeledContent("File", value: sourceFilename(for: sourceURL))
+                    case .inlineLink:
+                        LabeledContent("Method", value: "Embedded Link")
+                        LabeledContent("Format", value: "YAML")
+                    }
                 }
 
                 Section("Validated Config") {
@@ -90,7 +101,7 @@ struct RemoteRoutineImportPreviewSheet: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .navigationTitle("Import Remote Routine")
+            .navigationTitle("Import Routine")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -149,8 +160,8 @@ struct RemoteRoutineImportPreviewSheet: View {
         routineTitle.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private var sourceFilename: String {
-        let filename = pendingImport.sourceURL.lastPathComponent
+    private func sourceFilename(for sourceURL: URL) -> String {
+        let filename = sourceURL.lastPathComponent
         return filename.isEmpty ? "Remote YAML" : filename
     }
 

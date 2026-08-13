@@ -41,7 +41,7 @@ struct ContentView: View {
     // `store` 会在每次重绘时重新创建，整个应用状态就丢了。
     @State private var store: SamoyedStore
     @State private var remoteRoutineImportRequest: RemoteRoutineImportRequest?
-    @State private var pendingRemoteRoutineImport: PendingRemoteRoutineImport?
+    @State private var pendingRoutineImport: PendingRoutineImport?
     @State private var isLoadingRemoteRoutineImport = false
 
     private let remoteRoutineConfigLoader: SamoyedRemoteRoutineConfigLoader
@@ -60,7 +60,7 @@ struct ContentView: View {
         #endif
         _store = State(initialValue: resolvedStore)
         _remoteRoutineImportRequest = State(initialValue: nil)
-        _pendingRemoteRoutineImport = State(initialValue: nil)
+        _pendingRoutineImport = State(initialValue: nil)
         self.remoteRoutineConfigLoader = remoteRoutineConfigLoader
     }
 
@@ -121,8 +121,8 @@ struct ContentView: View {
                 store.reload()
                 consumePendingExternalRoute()
             }
-            .sheet(item: $pendingRemoteRoutineImport) { pendingImport in
-                RemoteRoutineImportPreviewSheet(pendingImport: pendingImport)
+            .sheet(item: $pendingRoutineImport) { pendingImport in
+                RoutineImportPreviewSheet(pendingImport: pendingImport)
                     .environment(store)
             }
             .overlay {
@@ -162,8 +162,19 @@ struct ContentView: View {
             store.showLibrary()
 
         case let .importRoutine(remoteURL, title, _):
+            pendingRoutineImport = nil
             remoteRoutineImportRequest = RemoteRoutineImportRequest(
                 remoteURL: remoteURL,
+                suggestedTitle: title
+            )
+
+        case let .importRoutinePayload(version, payload, title, _):
+            remoteRoutineImportRequest = nil
+            isLoadingRemoteRoutineImport = false
+            pendingRoutineImport = nil
+            prepareInlineRoutineImport(
+                version: version,
+                payload: payload,
                 suggestedTitle: title
             )
 
@@ -174,6 +185,36 @@ struct ContentView: View {
 
         case .endCurrentBlockLiveActivity:
             store.endCurrentBlockLiveActivity()
+        }
+    }
+
+    private func prepareInlineRoutineImport(
+        version: Int,
+        payload: String,
+        suggestedTitle: String?
+    ) {
+        do {
+            let yaml = try SamoyedInlineRoutineConfigDecoder().decode(
+                version: version,
+                payload: payload
+            )
+            let summary = try store.previewRoutineConfigImport(yaml)
+            let normalizedTitle = suggestedTitle?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            let resolvedTitle: String
+            if let normalizedTitle, !normalizedTitle.isEmpty {
+                resolvedTitle = normalizedTitle
+            } else {
+                resolvedTitle = "Imported Routine"
+            }
+            pendingRoutineImport = PendingRoutineImport(
+                origin: .inlineLink,
+                yaml: yaml,
+                summary: summary,
+                suggestedTitle: resolvedTitle
+            )
+        } catch {
+            store.presentError(error)
         }
     }
 
@@ -194,8 +235,8 @@ struct ContentView: View {
             try Task.checkCancellation()
             guard remoteRoutineImportRequest?.id == request.id else { return }
 
-            pendingRemoteRoutineImport = PendingRemoteRoutineImport(
-                sourceURL: loadedConfig.sourceURL,
+            pendingRoutineImport = PendingRoutineImport(
+                origin: .remote(loadedConfig.sourceURL),
                 yaml: loadedConfig.yaml,
                 summary: summary,
                 suggestedTitle: request.resolvedTitle

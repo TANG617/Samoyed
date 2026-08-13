@@ -60,6 +60,53 @@ final class SystemSupportTests: XCTestCase {
         XCTAssertNil(SamoyedSystemRoute(url: deepLink))
     }
 
+    func testSystemRouteRoundTripsInlineRoutinePayload() throws {
+        let route = SamoyedSystemRoute.importRoutinePayload(
+            version: 1,
+            payload: "dmVyc2lvbjogMQo",
+            title: "标准工作日",
+            source: .app
+        )
+        let deepLink = try XCTUnwrap(route.url)
+
+        XCTAssertEqual(SamoyedSystemRoute(url: deepLink), route)
+        XCTAssertEqual(deepLink.scheme, "samoyed")
+        XCTAssertEqual(deepLink.host, "import-routine")
+        XCTAssertTrue(deepLink.absoluteString.contains("v=1"))
+        XCTAssertTrue(deepLink.absoluteString.contains("payload=dmVyc2lvbjogMQo"))
+    }
+
+    func testSystemRouteRejectsIncompleteOrAmbiguousInlineRoutineLinks() throws {
+        XCTAssertNil(
+            SamoyedSystemRoute(
+                url: try XCTUnwrap(URL(string: "samoyed://import-routine?payload=dmVyc2lvbjogMQo"))
+            )
+        )
+        XCTAssertNil(
+            SamoyedSystemRoute(
+                url: try XCTUnwrap(URL(string: "samoyed://import-routine?v=1&payload="))
+            )
+        )
+        XCTAssertNil(
+            SamoyedSystemRoute(
+                url: try XCTUnwrap(
+                    URL(
+                        string: "samoyed://import-routine?payload=&url=https%3A%2F%2Fexample.com%2Froutine.yml"
+                    )
+                )
+            )
+        )
+        XCTAssertNil(
+            SamoyedSystemRoute(
+                url: try XCTUnwrap(
+                    URL(
+                        string: "samoyed://import-routine?v=1&payload=YWJj&url=https%3A%2F%2Fexample.com%2Froutine.yml"
+                    )
+                )
+            )
+        )
+    }
+
     func testDocumentRepositoryLoadsSavesAndMutatesUsingFileURL() throws {
         let fileURL = FileManager.default.temporaryDirectory
             .appending(path: "SamoyedTests")
