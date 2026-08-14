@@ -87,7 +87,7 @@ extension SamoyedCoreError: LocalizedError {
         case .missingTemplateParent:
             return "A template block references a missing parent block."
         case .emptyTemplateTitle:
-            return "Template title cannot be empty."
+            return "Routine title cannot be empty."
         case .emptyTemplateBlocks:
             return "A day type needs at least one block."
         case .emptyActivationWeekdays:
