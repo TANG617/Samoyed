@@ -24,7 +24,7 @@ final class SamoyedP0UITests: XCTestCase {
         starter.tap()
 
         let start = app.buttons[ID.activationStart]
-        XCTAssertTrue(start.waitForExistence(timeout: 5))
+        XCTAssertTrue(revealByScrolling(start))
         XCTAssertTrue(start.isEnabled)
         start.tap()
 
@@ -293,7 +293,7 @@ final class SamoyedP0UITests: XCTestCase {
         XCTAssertTrue(starter.exists)
         XCTAssertTrue(waitUntilHittable(starter))
         starter.tap()
-        XCTAssertTrue(app.buttons[ID.activationStart].waitForExistence(timeout: 3))
+        XCTAssertTrue(revealByScrolling(app.buttons[ID.activationStart]))
     }
 
     @discardableResult
@@ -340,6 +340,20 @@ final class SamoyedP0UITests: XCTestCase {
         timeout: TimeInterval = 5
     ) -> Bool {
         wait(for: NSPredicate(format: "hittable == true"), element: element, timeout: timeout)
+    }
+
+    private func revealByScrolling(
+        _ element: XCUIElement,
+        attempts: Int = 4
+    ) -> Bool {
+        if element.waitForExistence(timeout: 1) { return true }
+
+        for _ in 0..<attempts {
+            app.swipeUp()
+            if element.waitForExistence(timeout: 1) { return true }
+        }
+
+        return false
     }
 
     private func waitUntilEnabled(
