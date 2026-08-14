@@ -126,7 +126,7 @@ final class SystemSupportTests: XCTestCase {
 
     func testDocumentRepositoryLoadsSavesAndMutatesUsingFileURL() throws {
         let fileURL = FileManager.default.temporaryDirectory
-            .appending(path: "SamoyedTests")
+            .appending(path: "Samoyed Tests")
             .appending(path: "\(UUID().uuidString).json")
         let repository = SamoyedDocumentRepository(fileURL: fileURL)
         let template = SavedDayTemplate(
