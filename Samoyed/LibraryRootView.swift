@@ -2,6 +2,9 @@ import SwiftUI
 
 enum LibraryDestination: Hashable {
     case routines
+    case usualWeek
+    case suggestions
+    case planner
     case appearance
     case routineFiles
 }
@@ -38,17 +41,32 @@ struct LibraryRootView: View {
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink {
-                        RoutineEditorView(mode: .create)
+                    Menu {
+                        NavigationLink(value: LibraryDestination.appearance) {
+                            Label("Appearance", systemImage: "paintpalette")
+                        }
+                        NavigationLink(value: LibraryDestination.routineFiles) {
+                            Label("Routine Files", systemImage: "arrow.up.arrow.down")
+                        }
+                        NavigationLink(value: LibraryDestination.planner) {
+                            Label("About Planner", systemImage: "sparkles")
+                        }
                     } label: {
-                        Label("New Routine", systemImage: "plus")
+                        Label("More", systemImage: "ellipsis.circle")
                     }
+                    .accessibilityIdentifier("library-more")
                 }
             }
             .navigationDestination(for: LibraryDestination.self) { destination in
                 switch destination {
                 case .routines:
                     RoutinesRootView()
+                case .usualWeek:
+                    UsualWeekView()
+                case .suggestions:
+                    SuggestionsInboxView()
+                case .planner:
+                    PlannerView()
                 case .appearance:
                     LibraryAppearanceView()
                 case .routineFiles:
@@ -66,20 +84,12 @@ private struct LibraryContent: View {
 
     var body: some View {
         List {
-            Section {
-                Text("Choose, preview, and reuse routines.")
-                    .font(.title3)
-                    .foregroundStyle(.secondary)
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 4, trailing: 0))
-            }
-
             if model.savedTemplates.isEmpty {
                 Section {
                     ContentUnavailableView {
                         Label("No Routines", systemImage: "square.and.arrow.down")
                     } description: {
-                        Text("Create a reusable routine or import a Routine Config File.")
+                        Text("Import a Routine Config File or create one with ChatGPT.")
                     } actions: {
                         Button {
                             store.libraryNavigationPath.append(.routineFiles)
@@ -93,6 +103,7 @@ private struct LibraryContent: View {
                 .listRowBackground(Color.clear)
             } else {
                 todaySection
+                suggestionsSection
                 routinesSection
                 toolsSection
             }
@@ -109,14 +120,38 @@ private struct LibraryContent: View {
                 } label: {
                     LibraryRoutineRow(
                         routine: current,
-                        subtitle: "Running",
+                        subtitle: ["Running", current.timeRangeText].compactMap { $0 }.joined(separator: " · "),
                         showsSelection: true
                     )
                 }
+                .accessibilityIdentifier("library-current-routine")
             } else {
                 NavigationLink(value: LibraryDestination.routines) {
                     Label("Choose Today’s Routine", systemImage: "calendar.badge.exclamationmark")
                 }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var suggestionsSection: some View {
+        let pending = store.document.suggestions.filter { $0.lifecycleState == .pending }
+        if !pending.isEmpty {
+            Section("Suggestions") {
+                NavigationLink(value: LibraryDestination.suggestions) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Label(
+                            pending.contains(where: { $0.kind == .dailyPlan })
+                                ? "Tomorrow’s Plan"
+                                : "Routine Improvements",
+                            systemImage: "sparkles"
+                        )
+                        Text("\(pending.reduce(0) { $0 + max(1, $1.changes.count) }) changes · Ready to review")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .accessibilityIdentifier("library-suggestions")
             }
         }
     }
@@ -139,19 +174,37 @@ private struct LibraryContent: View {
             NavigationLink(value: LibraryDestination.routines) {
                 Label("All Routines", systemImage: "square.stack.3d.up")
             }
+
+            NavigationLink(value: LibraryDestination.usualWeek) {
+                Label("Usual Week", systemImage: "calendar")
+            }
         }
     }
 
     @ViewBuilder
     private var toolsSection: some View {
-        Section("Library Tools") {
-            NavigationLink(value: LibraryDestination.appearance) {
-                Label("Appearance", systemImage: "paintpalette")
+        Section("Planner & Files") {
+            NavigationLink(value: LibraryDestination.planner) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Label("Planner", systemImage: "sparkles")
+                    Text(plannerStatusText)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
             }
-
+            .accessibilityIdentifier("library-planner")
             NavigationLink(value: LibraryDestination.routineFiles) {
                 Label("Routine Files", systemImage: "arrow.up.arrow.down")
             }
+        }
+    }
+
+    private var plannerStatusText: String {
+        switch store.document.plannerSettings.connectionState {
+        case .disconnected: "Not Connected"
+        case .connected: "Connected"
+        case .unavailable: "Unavailable · routines continue locally"
+        case .needsAttention: "Needs Attention"
         }
     }
 }
@@ -204,6 +257,7 @@ struct LibraryAppearanceView: View {
                         )
                     }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier("appearance-\(preset.rawValue)")
                     .accessibilityAddTraits(store.tintPreset == preset ? [.isSelected] : [])
                 }
             }

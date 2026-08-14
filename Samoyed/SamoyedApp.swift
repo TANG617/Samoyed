@@ -178,6 +178,13 @@ struct ContentView: View {
                 suggestedTitle: title
             )
 
+        case let .importSuggestion(version, payload, _):
+            do {
+                try store.importSuggestion(version: version, payload: payload)
+            } catch {
+                store.presentError(error)
+            }
+
         case .startCurrentBlockLiveActivity:
             store.startCurrentBlockLiveActivity(
                 referenceDate: SamoyedSimulationClock.adjusted(.now)

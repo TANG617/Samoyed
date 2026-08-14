@@ -1,10 +1,12 @@
 import SwiftUI
 
 struct NowRootView: View {
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(SamoyedStore.self) private var store
     @State private var taskFilter: NowTaskFilter = .all
     @State private var pendingUndoReferences: [TaskCompletionReference] = []
-    @State private var isShowingTodayDifferent = false
+    @State private var feedbackContext: FeedbackSheetContext?
+    @State private var completionFeedbackTrigger = 0
 
     var body: some View {
         NavigationStack {
@@ -19,12 +21,6 @@ struct NowRootView: View {
                             systemImage: "bolt.circle",
                             description: "Refreshing your current blocks, notes, and checklist."
                         )
-                    } else if store.requiresTemplateSelection(for: localDay) {
-                        RoutineSelectionRequiredView(
-                            date: localDay,
-                            title: "Choose Today’s Routine",
-                            message: "Pick one routine before Now can show the current block and checklist."
-                        )
                     } else {
                         RootScreenContainer(
                             isLoaded: true,
@@ -38,12 +34,21 @@ struct NowRootView: View {
                             NowContentView(
                                 model: model,
                                 taskFilter: taskFilter,
-                                onTodayDifferent: {
-                                    store.recordValidationEvent(
-                                        .todayDifferentOpened,
-                                        outcome: "opened"
+                                onChooseRoutine: {
+                                    store.openLibrary(destination: .routines)
+                                },
+                                onFeedback: {
+                                    feedbackContext = FeedbackSheetContext(
+                                        target: model.focusBlock.map {
+                                            .block(blockID: $0.id)
+                                        } ?? .wholeDay,
+                                        targetTitle: model.focusBlock?.title ?? "Whole Day",
+                                        targetDetail: model.focusBlock.map {
+                                            "Current block, \($0.startMinuteOfDay.formattedTime) to \($0.endMinuteOfDay.formattedTime)"
+                                        } ?? model.date.titleText,
+                                        localDay: model.date,
+                                        source: .now
                                     )
-                                    isShowingTodayDifferent = true
                                 },
                                 onToggleTask: { blockID, taskID in
                                     toggleTask(on: model.date, blockID: blockID, taskID: taskID)
@@ -56,16 +61,16 @@ struct NowRootView: View {
             }
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    Button {
-                        store.startCurrentBlockLiveActivity(
-                            referenceDate: SamoyedSimulationClock.adjusted(.now)
-                        )
-                    } label: {
-                        Label("Start Live Activity", systemImage: "waveform.path.ecg.rectangle")
-                    }
-
+                ToolbarItem(placement: .topBarTrailing) {
                     Menu {
+                        Button {
+                            store.startCurrentBlockLiveActivity(
+                                referenceDate: SamoyedSimulationClock.adjusted(.now)
+                            )
+                        } label: {
+                            Label("Start Live Activity", systemImage: "waveform.path.ecg.rectangle")
+                        }
+
                         Picker("Checklist Filter", selection: $taskFilter) {
                             ForEach(NowTaskFilter.allCases) { filter in
                                 Label(filter.title, systemImage: filter.systemImage)
@@ -73,7 +78,7 @@ struct NowRootView: View {
                             }
                         }
                     } label: {
-                        Label("Filter Checklist", systemImage: "slider.horizontal.3")
+                        Label("More", systemImage: "ellipsis.circle")
                     }
                 }
             }
@@ -85,29 +90,27 @@ struct NowRootView: View {
                     .padding(.horizontal)
                     .padding(.vertical, 8)
                     .frame(maxWidth: .infinity, alignment: .trailing)
-                    .background(.bar)
-            }
-        }
-        .sheet(isPresented: $isShowingTodayDifferent) {
-            NavigationStack {
-                TodayTemplateChooserView(date: .today()) {
-                    store.recordValidationEvent(
-                        .todayDifferentCompleted,
-                        outcome: "saved"
-                    )
-                    isShowingTodayDifferent = false
-                }
-                .navigationTitle("Today is different")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") {
-                            isShowingTodayDifferent = false
+                    .background {
+                        if reduceTransparency {
+                            Color(uiColor: .systemBackground)
+                        } else {
+                            Rectangle().fill(.bar)
                         }
                     }
-                }
             }
         }
+        .sheet(item: $feedbackContext) { context in
+            FeedbackSheet(context: context) { sentiment, note in
+                try store.saveFeedback(
+                    target: context.target,
+                    on: context.localDay,
+                    sentiment: sentiment,
+                    note: note,
+                    source: context.source
+                )
+            }
+        }
+        .sensoryFeedback(.success, trigger: completionFeedbackTrigger)
     }
 
     private func toggleTask(on date: LocalDay, blockID: UUID, taskID: UUID) {
@@ -118,6 +121,7 @@ struct NowRootView: View {
                 taskID: taskID
             ) {
                 pendingUndoReferences = [reference]
+                completionFeedbackTrigger += 1
             } else {
                 store.toggleTask(on: date, blockID: blockID, taskID: taskID)
                 pendingUndoReferences = []
@@ -164,41 +168,44 @@ private enum NowTaskFilter: String, CaseIterable, Identifiable {
 private struct NowContentView: View {
     let model: NowScreenModel
     let taskFilter: NowTaskFilter
-    let onTodayDifferent: () -> Void
+    let onChooseRoutine: () -> Void
+    let onFeedback: () -> Void
     let onToggleTask: (UUID, UUID) -> Void
 
     var body: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 26) {
-                Text("Focus on what matters.")
-                    .font(.title3)
-                    .foregroundStyle(.secondary)
-
-                Button("Today is different", action: onTodayDifferent)
-                    .buttonStyle(.bordered)
-                    .accessibilityIdentifier("now-today-different")
-
-                if model.focusState == .noRoutine {
-                    Text("Nothing is running today")
-                        .font(.headline)
+            if model.focusState == .noRoutine {
+                ContentUnavailableView {
+                    Label("No Routine Today", systemImage: "calendar.badge.exclamationmark")
+                } description: {
+                    Text("Choose an existing routine to give Now a trusted local plan to run.")
+                } actions: {
+                    Button("Choose Routine", action: onChooseRoutine)
+                        .buttonStyle(.borderedProminent)
                 }
+                .frame(maxWidth: .infinity, minHeight: 420)
+                .padding(.horizontal, 20)
+            } else {
+                LazyVStack(alignment: .leading, spacing: 26) {
+                    NowCurrentSection(model: model)
 
-                NowCurrentSection(model: model)
+                    if !model.noteSections.isEmpty {
+                        NowNotesSection(sections: model.noteSections)
+                    }
 
-                if !model.noteSections.isEmpty {
-                    NowNotesSection(sections: model.noteSections)
+                    NowTasksSection(
+                        sections: model.taskSections,
+                        filter: taskFilter,
+                        statusMessage: model.statusMessage,
+                        focusState: model.focusState,
+                        onFeedback: onFeedback,
+                        onToggle: onToggleTask
+                    )
                 }
-
-                NowTasksSection(
-                    sections: model.taskSections,
-                    filter: taskFilter,
-                    statusMessage: model.statusMessage,
-                    onToggle: onToggleTask
-                )
+                .padding(.horizontal, 20)
+                .padding(.top, 4)
+                .padding(.bottom, 32)
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 4)
-            .padding(.bottom, 32)
         }
         .background(Color(uiColor: .systemGroupedBackground))
     }
@@ -223,12 +230,25 @@ private struct NowCurrentSection: View {
 }
 
 private struct NowBlockStack: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     let items: [NowChainItem]
     let notes: [NowNoteSection]
 
     var body: some View {
         if items.isEmpty {
             NowOpenTimeCard()
+        } else if dynamicTypeSize.isAccessibilitySize {
+            VStack(spacing: 12) {
+                ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                    NowBlockCard(
+                        item: item,
+                        summary: notes.first(where: { $0.id == item.id })?.note,
+                        isFront: index == 0,
+                        overlapsPreviousCard: false
+                    )
+                }
+            }
         } else {
             VStack(spacing: -22) {
                 ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
@@ -236,7 +256,7 @@ private struct NowBlockStack: View {
                         item: item,
                         summary: notes.first(where: { $0.id == item.id })?.note,
                         isFront: index == 0,
-                        stackIndex: index
+                        overlapsPreviousCard: true
                     )
                     .zIndex(Double(items.count - index))
                 }
@@ -251,7 +271,7 @@ private struct NowBlockCard: View {
     let item: NowChainItem
     let summary: String?
     let isFront: Bool
-    let stackIndex: Int
+    let overlapsPreviousCard: Bool
 
     private var style: LayerVisualStyle {
         LayerVisualStyle.forBlock(
@@ -274,7 +294,7 @@ private struct NowBlockCard: View {
         HStack(alignment: .top, spacing: 14) {
             Image(systemName: symbol)
                 .font(.title2.weight(.semibold))
-                .foregroundStyle(isFront ? Color.white : Color.secondary)
+                .foregroundStyle(isFront ? style.badgeForeground : Color.secondary)
                 .frame(width: 52, height: 52)
                 .background(
                     isFront ? style.accent : Color(uiColor: .tertiarySystemFill),
@@ -306,7 +326,7 @@ private struct NowBlockCard: View {
             .padding(.top, 1)
         }
         .padding(.horizontal, 16)
-        .padding(.top, isFront ? 16 : 32)
+        .padding(.top, isFront || !overlapsPreviousCard ? 16 : 32)
         .padding(.bottom, 16)
         .frame(maxWidth: .infinity, minHeight: 112, alignment: .topLeading)
         .background {
@@ -435,6 +455,8 @@ private struct NowTasksSection: View {
     let sections: [NowTaskSection]
     let filter: NowTaskFilter
     let statusMessage: String?
+    let focusState: NowFocusState
+    let onFeedback: () -> Void
     let onToggle: (UUID, UUID) -> Void
 
     private var allTasks: [NowChecklistDisplayItem] {
@@ -464,7 +486,7 @@ private struct NowTasksSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Checklist")
+                Text("Today’s Actions")
                     .font(.headline)
 
                 Spacer()
@@ -476,10 +498,18 @@ private struct NowTasksSection: View {
                 }
             }
 
+            Button(action: onFeedback) {
+                Label("Give Feedback", systemImage: "bubble.left")
+                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.bordered)
+            .accessibilityIdentifier("now-feedback")
+
             if visibleTasks.isEmpty {
                 ContentUnavailableView(
-                    filter == .completed ? "No Completed Items" : "No Checklist Items Right Now",
-                    systemImage: filter == .completed ? "checkmark.circle" : "checklist",
+                    emptyTitle,
+                    systemImage: emptySystemImage,
                     description: Text(emptyDescription)
                 )
                 .frame(maxWidth: .infinity)
@@ -495,6 +525,20 @@ private struct NowTasksSection: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var emptyTitle: String {
+        if filter == .completed {
+            return "No Completed Items"
+        }
+        if focusState == .finished || (!allTasks.isEmpty && allTasks.allSatisfy(\.task.isCompleted)) {
+            return "You’re All Caught Up"
+        }
+        return "No Checklist Items Right Now"
+    }
+
+    private var emptySystemImage: String {
+        emptyTitle == "You’re All Caught Up" ? "checkmark.circle" : "checklist"
     }
 }
 
