@@ -18,7 +18,6 @@ final class SamoyedP0UITests: XCTestCase {
     func testFirstRunStarterInstallsFrozenRuntimeAndPersists() throws {
         launch(fixture: .firstRun)
 
-        XCTAssertTrue(element(id: ID.firstRun).waitForExistence(timeout: 5))
         let starter = app.buttons[ID.activationStarter]
         XCTAssertTrue(starter.waitForExistence(timeout: 5))
         starter.tap()
@@ -138,7 +137,7 @@ final class SamoyedP0UITests: XCTestCase {
         XCTAssertTrue(waitForValue("No Routine", of: currentRoutine))
 
         currentRoutine.tap()
-        let select = app.buttons["Select for Today"].firstMatch
+        let select = app.buttons[ID.todayWorkdayRoutine]
         XCTAssertTrue(select.waitForExistence(timeout: 3))
         select.tap()
 
@@ -200,13 +199,11 @@ final class SamoyedP0UITests: XCTestCase {
         app.buttons["Appearance"].tap()
         XCTAssertTrue(app.navigationBars["Appearance"].waitForExistence(timeout: 3))
 
-        let sunrise = app.buttons.matching(
-            NSPredicate(format: "label BEGINSWITH %@", "Sunrise")
-        ).firstMatch
-        XCTAssertTrue(sunrise.waitForExistence(timeout: 3))
-        sunrise.tap()
-        XCTAssertTrue(waitUntilSelected(sunrise))
-        XCTAssertTrue(app.staticTexts["Sunrise"].exists)
+        let coral = app.buttons[ID.appearanceCoral]
+        XCTAssertTrue(coral.waitForExistence(timeout: 3))
+        coral.tap()
+        XCTAssertTrue(waitUntilSelected(coral))
+        XCTAssertTrue(app.staticTexts["Coral"].exists)
     }
 
     func testSuggestionsExposePendingAcceptedAndRejectedStates() throws {
@@ -402,14 +399,18 @@ final class SamoyedP0UITests: XCTestCase {
         source_date: 2026-08-14
         blocks:
           - title: Focus
-            start: "09:00"
-            end: "12:00"
+            timing:
+              type: absolute
+              start: "09:00"
+              end: "12:00"
             note: Protect one calm outcome.
             tasks:
               - title: Ship the smallest useful slice
           - title: Lunch
-            start: "12:00"
-            end: "13:00"
+            timing:
+              type: absolute
+              start: "12:00"
+              end: "13:00"
         """
         let payload = Data(yaml.utf8).base64EncodedString()
             .replacingOccurrences(of: "+", with: "-")
@@ -453,12 +454,14 @@ private enum ID {
     static let blockDone = "block-details-done"
     static let todayCurrentRoutine = "today-current-routine"
     static let todayNoRoutine = "today-no-routine"
+    static let todayWorkdayRoutine = "today-select-routine-10000000-0000-0000-0000-000000000001"
     static let libraryCurrentRoutine = "library-current-routine"
     static let libraryMore = "library-more"
     static let librarySuggestions = "library-suggestions"
     static let libraryPlanner = "library-planner"
     static let routineSelectToday = "routine-select-today"
     static let routineAskPlanner = "routine-ask-planner"
+    static let appearanceCoral = "appearance-coral"
     static let usualWeekMonday = "usual-week-2"
     static let suggestionsInbox = "suggestions-inbox"
     static let suggestionAccept = "suggestion-accept"

@@ -257,6 +257,7 @@ struct LibraryAppearanceView: View {
                         )
                     }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier("appearance-\(preset.rawValue)")
                     .accessibilityAddTraits(store.tintPreset == preset ? [.isSelected] : [])
                 }
             }
